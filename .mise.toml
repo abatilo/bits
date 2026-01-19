@@ -1,0 +1,28 @@
+[tools]
+go = "1.25.5"
+
+[tasks.build]
+description = "Build bits binary"
+run = "go build -o bin/bits ./cmd/bits"
+sources = ["cmd/**/*.go", "internal/**/*.go", "go.mod", "go.sum"]
+outputs = ["bin/bits"]
+
+[tasks.test]
+description = "Run all tests"
+run = "go test ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run"
+
+[tasks."lint:fix"]
+description = "Run golangci-lint with auto-fix"
+run = "go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix"
+
+[tasks.fmt]
+description = "Format Go code"
+run = "go fmt ./..."
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
