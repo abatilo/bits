@@ -82,13 +82,21 @@ func initCmd() *cobra.Command {
 			if err != nil {
 				printError(err)
 			}
-			if err = store.Init(force); err != nil {
-				printError(err)
+			if force {
+				if err = store.Init(true); err != nil {
+					printError(err)
+				}
+				printOutput(formatter.FormatMessage(fmt.Sprintf("Reinitialized bits at %s", store.BasePath())))
+			} else {
+				// Ensure initialized (implicit init)
+				if err = store.EnsureInitialized(); err != nil {
+					printError(err)
+				}
+				printOutput(formatter.FormatMessage(fmt.Sprintf("bits storage: %s", store.BasePath())))
 			}
-			printOutput(formatter.FormatMessage(fmt.Sprintf("Initialized bits at %s", store.BasePath())))
 		},
 	}
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Reinitialize even if already exists")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Wipe and reinitialize")
 	return cmd
 }
 

@@ -111,23 +111,20 @@ func TestStoreOperations(t *testing.T) {
 	basePath := filepath.Join(tmpDir, ".bits")
 	store := NewStoreWithPath(basePath)
 
-	// Test init
+	// Store should not be initialized yet
 	if store.IsInitialized() {
 		t.Error("Store should not be initialized yet")
 	}
 
-	if err := store.Init(false); err != nil {
-		t.Fatalf("Init failed: %v", err)
-	}
-
-	if !store.IsInitialized() {
-		t.Error("Store should be initialized")
-	}
-
-	// Test create task
+	// Test create task - should auto-initialize
 	tk, err := store.CreateTask("Test task", "Description", task.PriorityMedium)
 	if err != nil {
 		t.Fatalf("CreateTask failed: %v", err)
+	}
+
+	// Should now be initialized
+	if !store.IsInitialized() {
+		t.Error("Store should be initialized after CreateTask")
 	}
 
 	if tk.ID == "" {
@@ -162,6 +159,74 @@ func TestStoreOperations(t *testing.T) {
 	tasks, _ = store.List(StatusFilter{})
 	if len(tasks) != 0 {
 		t.Errorf("After delete, list length = %d, want 0", len(tasks))
+	}
+}
+
+func TestEnsureInitialized(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, ".bits")
+	store := NewStoreWithPath(basePath)
+
+	// Should not be initialized yet
+	if store.IsInitialized() {
+		t.Error("Store should not be initialized yet")
+	}
+
+	// EnsureInitialized should create the directory
+	if err := store.EnsureInitialized(); err != nil {
+		t.Fatalf("EnsureInitialized failed: %v", err)
+	}
+
+	if !store.IsInitialized() {
+		t.Error("Store should be initialized after EnsureInitialized")
+	}
+
+	// Calling again should be a no-op
+	if err := store.EnsureInitialized(); err != nil {
+		t.Fatalf("Second EnsureInitialized failed: %v", err)
+	}
+}
+
+func TestInitForce(t *testing.T) {
+	tmpDir := t.TempDir()
+	basePath := filepath.Join(tmpDir, ".bits")
+	store := NewStoreWithPath(basePath)
+
+	// Create a task first
+	tk, err := store.CreateTask("Test task", "Description", task.PriorityMedium)
+	if err != nil {
+		t.Fatalf("CreateTask failed: %v", err)
+	}
+
+	// Verify task exists
+	if _, err = store.Load(tk.ID); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Init without force should keep existing data
+	if err = store.Init(false); err != nil {
+		t.Fatalf("Init(false) failed: %v", err)
+	}
+
+	// Task should still exist
+	if _, err = store.Load(tk.ID); err != nil {
+		t.Fatalf("Task should still exist after Init(false): %v", err)
+	}
+
+	// Init with force should wipe data
+	if err = store.Init(true); err != nil {
+		t.Fatalf("Init(true) failed: %v", err)
+	}
+
+	// Task should be gone
+	_, err = store.Load(tk.ID)
+	if err == nil {
+		t.Error("Task should not exist after Init(true)")
+	}
+
+	// Store should still be initialized
+	if !store.IsInitialized() {
+		t.Error("Store should be initialized after Init(true)")
 	}
 }
 

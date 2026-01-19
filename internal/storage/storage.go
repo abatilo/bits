@@ -53,10 +53,21 @@ func (s *Store) IsInitialized() bool {
 	return err == nil && info.IsDir()
 }
 
-// Init creates the bits directory.
+// EnsureInitialized creates the bits directory if it doesn't exist.
+func (s *Store) EnsureInitialized() error {
+	if s.IsInitialized() {
+		return nil
+	}
+	//nolint:gosec // G301: 0755 is appropriate for user-accessible task directory
+	return os.MkdirAll(s.basePath, 0o755)
+}
+
+// Init initializes the bits directory. With force=true, it wipes and recreates.
 func (s *Store) Init(force bool) error {
-	if s.IsInitialized() && !force {
-		return AlreadyInitializedError{}
+	if force {
+		if err := os.RemoveAll(s.basePath); err != nil {
+			return err
+		}
 	}
 	//nolint:gosec // G301: 0755 is appropriate for user-accessible task directory
 	return os.MkdirAll(s.basePath, 0o755)
@@ -75,8 +86,8 @@ func (s *Store) Exists(id string) bool {
 
 // Save writes a task to disk.
 func (s *Store) Save(t *task.Task) error {
-	if !s.IsInitialized() {
-		return NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return err
 	}
 	content, err := SerializeMarkdown(t)
 	if err != nil {
@@ -88,8 +99,8 @@ func (s *Store) Save(t *task.Task) error {
 
 // Load reads a task from disk.
 func (s *Store) Load(id string) (*task.Task, error) {
-	if !s.IsInitialized() {
-		return nil, NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return nil, err
 	}
 	content, err := os.ReadFile(s.taskPath(id))
 	if os.IsNotExist(err) {
@@ -103,8 +114,8 @@ func (s *Store) Load(id string) (*task.Task, error) {
 
 // Delete removes a task file.
 func (s *Store) Delete(id string) error {
-	if !s.IsInitialized() {
-		return NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return err
 	}
 	err := os.Remove(s.taskPath(id))
 	if os.IsNotExist(err) {
@@ -115,8 +126,8 @@ func (s *Store) Delete(id string) error {
 
 // List returns all tasks, optionally filtered and sorted.
 func (s *Store) List(filter StatusFilter) ([]*task.Task, error) {
-	if !s.IsInitialized() {
-		return nil, NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return nil, err
 	}
 
 	entries, err := os.ReadDir(s.basePath)
@@ -155,8 +166,8 @@ func (s *Store) List(filter StatusFilter) ([]*task.Task, error) {
 
 // AllIDs returns all task IDs (for ID generation collision checking).
 func (s *Store) AllIDs() (map[string]bool, error) {
-	if !s.IsInitialized() {
-		return nil, NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return nil, err
 	}
 
 	entries, err := os.ReadDir(s.basePath)
@@ -204,8 +215,8 @@ func (s *Store) RemoveDependency(depID string) error {
 
 // CreateTask creates a new task with generated ID.
 func (s *Store) CreateTask(title, description string, priority task.Priority) (*task.Task, error) {
-	if !s.IsInitialized() {
-		return nil, NotInitializedError{}
+	if err := s.EnsureInitialized(); err != nil {
+		return nil, err
 	}
 
 	createdAt := time.Now().UTC()
