@@ -96,8 +96,8 @@ bits list --closed     # Only closed tasks
 
 Output:
 ```
-[ ] P2 [abc123] Fix the login bug
 [*] P1 [def456] Implement caching
+[ ] P2 [abc123] Fix the login bug
 [X] P3 [ghi789] Update readme
 ```
 
