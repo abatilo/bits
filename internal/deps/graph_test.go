@@ -1,3 +1,4 @@
+//nolint:testpackage // Tests require internal access for thorough testing
 package deps
 
 import (
@@ -21,9 +22,9 @@ func makeTask(id string, status task.Status, deps ...string) *task.Task {
 func TestIsBlocked(t *testing.T) {
 	tasks := []*task.Task{
 		makeTask("a", task.StatusOpen),
-		makeTask("b", task.StatusOpen, "a"),  // b depends on a
+		makeTask("b", task.StatusOpen, "a"), // b depends on a
 		makeTask("c", task.StatusClosed),
-		makeTask("d", task.StatusOpen, "c"),  // d depends on c (closed)
+		makeTask("d", task.StatusOpen, "c"), // d depends on c (closed)
 	}
 
 	g := NewGraph(tasks)
@@ -93,11 +94,11 @@ func TestWouldCreateCycle(t *testing.T) {
 
 func TestReady(t *testing.T) {
 	tasks := []*task.Task{
-		makeTask("a", task.StatusOpen),                     // Ready
-		makeTask("b", task.StatusOpen, "a"),                // Blocked by a
-		makeTask("c", task.StatusClosed),                   // Closed
-		makeTask("d", task.StatusOpen, "c"),                // Ready (c is closed)
-		makeTask("e", task.StatusActive),                   // Active, not ready
+		makeTask("a", task.StatusOpen),      // Ready
+		makeTask("b", task.StatusOpen, "a"), // Blocked by a
+		makeTask("c", task.StatusClosed),    // Closed
+		makeTask("d", task.StatusOpen, "c"), // Ready (c is closed)
+		makeTask("e", task.StatusActive),    // Active, not ready
 	}
 
 	g := NewGraph(tasks)

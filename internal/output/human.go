@@ -127,7 +127,7 @@ func (f *HumanFormatter) formatGraphNode(sb *strings.Builder, node GraphNode, pr
 	}
 
 	statusIcon := f.statusIcon(node.Task.Status)
-	sb.WriteString(fmt.Sprintf("%s%s%s [%s] %s\n", prefix, connector, statusIcon, node.Task.ID, node.Task.Title))
+	fmt.Fprintf(sb, "%s%s%s [%s] %s\n", prefix, connector, statusIcon, node.Task.ID, node.Task.Title)
 
 	childPrefix := prefix
 	if prefix != "" {

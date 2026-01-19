@@ -1,3 +1,4 @@
+//nolint:testpackage // Tests require internal access for thorough testing
 package task
 
 import (
@@ -65,7 +66,7 @@ func TestGenerateID(t *testing.T) {
 	now := time.Now()
 
 	// Should generate a unique ID
-	id := GenerateID("Test task", now, func(id string) bool { return false })
+	id := GenerateID("Test task", now, func(_ string) bool { return false })
 	if len(id) < 3 {
 		t.Errorf("ID too short: %s", id)
 	}

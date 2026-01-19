@@ -3,16 +3,19 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/abatilo/bits/internal/deps"
 	bitserrors "github.com/abatilo/bits/internal/errors"
 	"github.com/abatilo/bits/internal/output"
 	"github.com/abatilo/bits/internal/storage"
 	"github.com/abatilo/bits/internal/task"
-	"github.com/spf13/cobra"
 )
 
+//nolint:gochecknoglobals // CLI flags and formatter are package-level by design
 var (
 	jsonOutput bool
 	formatter  output.Formatter
@@ -23,7 +26,7 @@ func main() {
 		Use:   "bits",
 		Short: "A minimal, file-based task tracker",
 		Long:  "bits - A minimal, file-based task tracker optimized for AI agents.",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if jsonOutput {
 				formatter = output.NewJSONFormatter()
 			} else {
@@ -60,26 +63,26 @@ func getStore() (*storage.Store, error) {
 }
 
 func printOutput(s string) {
-	fmt.Print(s)
+	os.Stdout.WriteString(s) //nolint:gosec // stdout write errors are unrecoverable
 }
 
 func printError(err error) {
-	fmt.Print(formatter.FormatError(err))
+	os.Stdout.WriteString(formatter.FormatError(err)) //nolint:gosec // stdout write errors are unrecoverable
 	os.Exit(1)
 }
 
-// initCmd implements 'bits init'
+// initCmd implements 'bits init'.
 func initCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize bits task directory",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
 			}
-			if err := store.Init(force); err != nil {
+			if err = store.Init(force); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatMessage(fmt.Sprintf("Initialized bits at %s", store.BasePath())))
@@ -89,7 +92,7 @@ func initCmd() *cobra.Command {
 	return cmd
 }
 
-// addCmd implements 'bits add'
+// addCmd implements 'bits add'.
 func addCmd() *cobra.Command {
 	var description string
 	var priority string
@@ -97,7 +100,7 @@ func addCmd() *cobra.Command {
 		Use:   "add <title>",
 		Short: "Add a new task",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -105,7 +108,7 @@ func addCmd() *cobra.Command {
 
 			p := task.Priority(priority)
 			if !task.IsValidPriority(p) {
-				printError(bitserrors.ErrInvalidPriority{Value: priority})
+				printError(bitserrors.InvalidPriorityError{Value: priority})
 			}
 
 			t, err := store.CreateTask(args[0], description, p)
@@ -120,13 +123,13 @@ func addCmd() *cobra.Command {
 	return cmd
 }
 
-// listCmd implements 'bits list'
+// listCmd implements 'bits list'.
 func listCmd() *cobra.Command {
 	var showOpen, showActive, showClosed bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List tasks",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -151,13 +154,13 @@ func listCmd() *cobra.Command {
 	return cmd
 }
 
-// showCmd implements 'bits show'
+// showCmd implements 'bits show'.
 func showCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <id>",
 		Short: "Show task details",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -172,12 +175,12 @@ func showCmd() *cobra.Command {
 	}
 }
 
-// readyCmd implements 'bits ready'
+// readyCmd implements 'bits ready'.
 func readyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ready",
 		Short: "List tasks ready to be worked on",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -195,13 +198,13 @@ func readyCmd() *cobra.Command {
 	}
 }
 
-// claimCmd implements 'bits claim'
+// claimCmd implements 'bits claim'.
 func claimCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "claim <id>",
 		Short: "Claim a task (mark as active)",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -213,7 +216,7 @@ func claimCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusOpen {
-				printError(bitserrors.ErrInvalidStatus{
+				printError(bitserrors.InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusOpen),
@@ -228,11 +231,11 @@ func claimCmd() *cobra.Command {
 			graph := deps.NewGraph(tasks)
 			blockers := graph.BlockedBy(t.ID)
 			if len(blockers) > 0 {
-				printError(bitserrors.ErrBlocked{ID: t.ID, BlockedBy: blockers})
+				printError(bitserrors.BlockedError{ID: t.ID, BlockedBy: blockers})
 			}
 
 			t.Status = task.StatusActive
-			if err := store.Save(t); err != nil {
+			if err = store.Save(t); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
@@ -240,13 +243,13 @@ func claimCmd() *cobra.Command {
 	}
 }
 
-// releaseCmd implements 'bits release'
+// releaseCmd implements 'bits release'.
 func releaseCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "release <id>",
 		Short: "Release a task (mark as open)",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -258,7 +261,7 @@ func releaseCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusActive {
-				printError(bitserrors.ErrInvalidStatus{
+				printError(bitserrors.InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusActive),
@@ -266,7 +269,7 @@ func releaseCmd() *cobra.Command {
 			}
 
 			t.Status = task.StatusOpen
-			if err := store.Save(t); err != nil {
+			if err = store.Save(t); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
@@ -274,13 +277,13 @@ func releaseCmd() *cobra.Command {
 	}
 }
 
-// closeCmd implements 'bits close'
+// closeCmd implements 'bits close'.
 func closeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "close <id> <reason>",
 		Short: "Close a task",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:  cobra.ExactArgs(2), //nolint:mnd // CLI takes 2 positional args
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -292,7 +295,7 @@ func closeCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusActive {
-				printError(bitserrors.ErrInvalidStatus{
+				printError(bitserrors.InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusActive),
@@ -301,7 +304,7 @@ func closeCmd() *cobra.Command {
 
 			reason := args[1]
 			if reason == "" {
-				printError(bitserrors.ErrMissingReason{})
+				printError(bitserrors.MissingReasonError{})
 			}
 
 			now := time.Now().UTC()
@@ -309,7 +312,7 @@ func closeCmd() *cobra.Command {
 			t.ClosedAt = &now
 			t.CloseReason = &reason
 
-			if err := store.Save(t); err != nil {
+			if err = store.Save(t); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
@@ -317,13 +320,13 @@ func closeCmd() *cobra.Command {
 	}
 }
 
-// depCmd implements 'bits dep'
+// depCmd implements 'bits dep'.
 func depCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "dep <id> <depends-on-id>",
 		Short: "Add a dependency",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:  cobra.ExactArgs(2), //nolint:mnd // CLI takes 2 positional args
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -339,7 +342,7 @@ func depCmd() *cobra.Command {
 			}
 
 			graph := deps.NewGraph(tasks)
-			if err := graph.ValidateAddDep(taskID, depID); err != nil {
+			if err = graph.ValidateAddDep(taskID, depID); err != nil {
 				printError(err)
 			}
 
@@ -349,15 +352,13 @@ func depCmd() *cobra.Command {
 			}
 
 			// Check if already depends on
-			for _, d := range t.DependsOn {
-				if d == depID {
-					printOutput(formatter.FormatMessage("Dependency already exists"))
-					return
-				}
+			if slices.Contains(t.DependsOn, depID) {
+				printOutput(formatter.FormatMessage("Dependency already exists"))
+				return
 			}
 
 			t.DependsOn = append(t.DependsOn, depID)
-			if err := store.Save(t); err != nil {
+			if err = store.Save(t); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
@@ -365,13 +366,13 @@ func depCmd() *cobra.Command {
 	}
 }
 
-// undepCmd implements 'bits undep'
+// undepCmd implements 'bits undep'.
 func undepCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "undep <id> <depends-on-id>",
 		Short: "Remove a dependency",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:  cobra.ExactArgs(2), //nolint:mnd // CLI takes 2 positional args
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -399,7 +400,7 @@ func undepCmd() *cobra.Command {
 			}
 
 			t.DependsOn = newDeps
-			if err := store.Save(t); err != nil {
+			if err = store.Save(t); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
@@ -407,12 +408,12 @@ func undepCmd() *cobra.Command {
 	}
 }
 
-// graphCmd implements 'bits graph'
+// graphCmd implements 'bits graph'.
 func graphCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "graph",
 		Short: "Display dependency graph",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -430,12 +431,12 @@ func graphCmd() *cobra.Command {
 	}
 }
 
-// pruneCmd implements 'bits prune'
+// pruneCmd implements 'bits prune'.
 func pruneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "prune",
 		Short: "Remove all closed tasks",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -452,7 +453,7 @@ func pruneCmd() *cobra.Command {
 			}
 
 			for _, t := range tasks {
-				if err := store.Delete(t.ID); err != nil {
+				if err = store.Delete(t.ID); err != nil {
 					printError(err)
 				}
 			}
@@ -461,13 +462,13 @@ func pruneCmd() *cobra.Command {
 	}
 }
 
-// rmCmd implements 'bits rm'
+// rmCmd implements 'bits rm'.
 func rmCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "rm <id>",
 		Short: "Remove a task",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			store, err := getStore()
 			if err != nil {
 				printError(err)
@@ -482,12 +483,12 @@ func rmCmd() *cobra.Command {
 			}
 
 			// Remove from other tasks' dependencies
-			if err := store.RemoveDependency(taskID); err != nil {
+			if err = store.RemoveDependency(taskID); err != nil {
 				printError(err)
 			}
 
 			// Delete the task
-			if err := store.Delete(taskID); err != nil {
+			if err = store.Delete(taskID); err != nil {
 				printError(err)
 			}
 			printOutput(formatter.FormatMessage(fmt.Sprintf("Removed task %s", taskID)))

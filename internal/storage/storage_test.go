@@ -1,3 +1,4 @@
+//nolint:testpackage // Tests require internal access for thorough testing
 package storage
 
 import (
@@ -106,11 +107,7 @@ func TestSerializeMarkdown(t *testing.T) {
 
 func TestStoreOperations(t *testing.T) {
 	// Create temp directory
-	tmpDir, err := os.MkdirTemp("", "bits-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	basePath := filepath.Join(tmpDir, ".bits")
 	store := NewStoreWithPath(basePath)
@@ -159,7 +156,7 @@ func TestStoreOperations(t *testing.T) {
 	}
 
 	// Test delete
-	if err := store.Delete(tk.ID); err != nil {
+	if err = store.Delete(tk.ID); err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
 
@@ -217,15 +214,13 @@ func TestSanitizePath(t *testing.T) {
 	}
 }
 
+//nolint:gocognit // Test setup/teardown requires multiple nested subtests
 func TestFindProjectRoot(t *testing.T) {
 	// Create temp directory structure
-	tmpDir, err := os.MkdirTemp("", "bits-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Resolve symlinks in temp dir (macOS /var -> /private/var)
+	var err error
 	tmpDir, err = filepath.EvalSymlinks(tmpDir)
 	if err != nil {
 		t.Fatalf("Failed to resolve symlinks: %v", err)
@@ -233,24 +228,22 @@ func TestFindProjectRoot(t *testing.T) {
 
 	// Create nested directories: tmpDir/parent/child/grandchild
 	grandchild := filepath.Join(tmpDir, "parent", "child", "grandchild")
-	if err := os.MkdirAll(grandchild, 0755); err != nil {
+	if err = os.MkdirAll(grandchild, 0o755); err != nil {
 		t.Fatalf("Failed to create directories: %v", err)
 	}
 
 	t.Run("finds .git in current directory", func(t *testing.T) {
 		// Create .git in grandchild
 		gitDir := filepath.Join(grandchild, ".git")
-		if err := os.Mkdir(gitDir, 0755); err != nil {
+		if err := os.Mkdir(gitDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
 			t.Fatalf("Failed to create .git: %v", err)
 		}
 		defer os.RemoveAll(gitDir)
 
 		// Change to grandchild and find root
-		oldWd, _ := os.Getwd()
-		os.Chdir(grandchild)
-		defer os.Chdir(oldWd)
+		t.Chdir(grandchild)
 
-		root, err := FindProjectRoot()
+		root, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
 		if err != nil {
 			t.Fatalf("FindProjectRoot() error = %v", err)
 		}
@@ -263,17 +256,15 @@ func TestFindProjectRoot(t *testing.T) {
 		// Create .git in parent
 		parent := filepath.Join(tmpDir, "parent")
 		gitDir := filepath.Join(parent, ".git")
-		if err := os.Mkdir(gitDir, 0755); err != nil {
+		if err := os.Mkdir(gitDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
 			t.Fatalf("Failed to create .git: %v", err)
 		}
 		defer os.RemoveAll(gitDir)
 
 		// Change to grandchild and find root
-		oldWd, _ := os.Getwd()
-		os.Chdir(grandchild)
-		defer os.Chdir(oldWd)
+		t.Chdir(grandchild)
 
-		root, err := FindProjectRoot()
+		root, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
 		if err != nil {
 			t.Fatalf("FindProjectRoot() error = %v", err)
 		}
@@ -285,22 +276,20 @@ func TestFindProjectRoot(t *testing.T) {
 	t.Run("returns error when no .git found", func(t *testing.T) {
 		// Create a directory with no .git anywhere up the tree
 		noGitDir := filepath.Join(tmpDir, "no-git-here")
-		if err := os.Mkdir(noGitDir, 0755); err != nil {
+		if err := os.Mkdir(noGitDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
 			t.Fatalf("Failed to create directory: %v", err)
 		}
 
-		oldWd, _ := os.Getwd()
-		os.Chdir(noGitDir)
-		defer os.Chdir(oldWd)
+		t.Chdir(noGitDir)
 
-		_, err := FindProjectRoot()
+		_, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
 		if err == nil {
 			t.Error("FindProjectRoot() should return error when no .git found")
 		}
-		if !errors.Is(err, bitserrors.ErrNotInRepo{}) {
-			var notInRepo bitserrors.ErrNotInRepo
+		if !errors.Is(err, bitserrors.NotInRepoError{}) {
+			var notInRepo bitserrors.NotInRepoError
 			if !errors.As(err, &notInRepo) {
-				t.Errorf("FindProjectRoot() error = %v, want ErrNotInRepo", err)
+				t.Errorf("FindProjectRoot() error = %v, want NotInRepoError", err)
 			}
 		}
 	})

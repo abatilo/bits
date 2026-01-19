@@ -20,7 +20,8 @@ func FindProjectRoot() (string, error) {
 	dir := cwd
 	for {
 		gitPath := filepath.Join(dir, ".git")
-		info, err := os.Stat(gitPath)
+		var info os.FileInfo
+		info, err = os.Stat(gitPath)
 		if err == nil && info.IsDir() {
 			return dir, nil
 		}
@@ -28,14 +29,14 @@ func FindProjectRoot() (string, error) {
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			// Reached root without finding .git
-			return "", bitserrors.ErrNotInRepo{}
+			return "", bitserrors.NotInRepoError{}
 		}
 		dir = parent
 	}
 }
 
 // SanitizePath converts an absolute path to a safe directory name.
-// "/Users/abatilo/myproject" -> "Users-abatilo-myproject"
+// "/Users/abatilo/myproject" -> "Users-abatilo-myproject".
 func SanitizePath(path string) string {
 	// Remove leading slash
 	result := strings.TrimPrefix(path, "/")

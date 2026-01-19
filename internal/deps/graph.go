@@ -1,6 +1,7 @@
 package deps
 
 import (
+	"slices"
 	"sort"
 
 	bitserrors "github.com/abatilo/bits/internal/errors"
@@ -124,11 +125,8 @@ func (g *Graph) Ready() []*task.Task {
 func (g *Graph) Dependents(id string) []string {
 	var dependents []string
 	for _, t := range g.tasks {
-		for _, depID := range t.DependsOn {
-			if depID == id {
-				dependents = append(dependents, t.ID)
-				break
-			}
+		if slices.Contains(t.DependsOn, id) {
+			dependents = append(dependents, t.ID)
 		}
 	}
 	return dependents
@@ -137,19 +135,21 @@ func (g *Graph) Dependents(id string) []string {
 // ValidateAddDep validates adding a dependency from -> to.
 func (g *Graph) ValidateAddDep(from, to string) error {
 	if g.tasks[from] == nil {
-		return bitserrors.ErrTaskNotFound{ID: from}
+		return bitserrors.TaskNotFoundError{ID: from}
 	}
 	if g.tasks[to] == nil {
-		return bitserrors.ErrTaskNotFound{ID: to}
+		return bitserrors.TaskNotFoundError{ID: to}
 	}
 	if g.WouldCreateCycle(from, to) {
-		return bitserrors.ErrCycle{From: from, To: to}
+		return bitserrors.CycleError{From: from, To: to}
 	}
 	return nil
 }
 
 // BuildTree builds a tree representation of tasks for graph display.
 // Returns root nodes (tasks with no dependents).
+//
+//nolint:gocognit // Tree building algorithm requires nested iteration
 func (g *Graph) BuildTree() []output.GraphNode {
 	// Find root tasks (tasks that nothing depends on)
 	hasParent := make(map[string]bool)
@@ -172,11 +172,8 @@ func (g *Graph) BuildTree() []output.GraphNode {
 	for _, t := range g.tasks {
 		isRoot := true
 		for _, other := range g.tasks {
-			for _, depID := range other.DependsOn {
-				if depID == t.ID {
-					isRoot = false
-					break
-				}
+			if slices.Contains(other.DependsOn, t.ID) {
+				isRoot = false
 			}
 			if !isRoot {
 				break

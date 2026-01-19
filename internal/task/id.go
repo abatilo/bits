@@ -10,17 +10,21 @@ import (
 )
 
 const (
-	minIDLength = 3
-	maxIDLength = 8
-	base36Chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+	minIDLength  = 3
+	maxIDLength  = 8
+	nonceSize    = 16 // 128 bits of entropy
+	hexChunkSize = 4  // Process 4 hex chars (16 bits) at a time for base36 conversion
+	base36Chars  = "0123456789abcdefghijklmnopqrstuvwxyz"
 )
 
 // GenerateID creates a unique task ID using hash-based generation with adaptive length.
 // It starts with minIDLength characters and grows up to maxIDLength to avoid collisions.
 func GenerateID(title string, createdAt time.Time, existsFn func(string) bool) string {
 	// Generate random nonce
-	nonce := make([]byte, 16)
-	rand.Read(nonce)
+	nonce := make([]byte, nonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 
 	// Create hash from title + timestamp + nonce
 	h := sha256.New()
@@ -50,9 +54,9 @@ func GenerateID(title string, createdAt time.Time, existsFn func(string) bool) s
 // hexToBase36 converts a hex string to base36.
 func hexToBase36(hexStr string) string {
 	var result strings.Builder
-	// Process 4 hex chars at a time (16 bits)
-	for i := 0; i < len(hexStr); i += 4 {
-		end := min(i+4, len(hexStr))
+	// Process hex chars in chunks
+	for i := 0; i < len(hexStr); i += hexChunkSize {
+		end := min(i+hexChunkSize, len(hexStr))
 		chunk := hexStr[i:end]
 		val, _ := strconv.ParseUint(chunk, 16, 64)
 		result.WriteString(toBase36(val))

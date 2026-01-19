@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abatilo/bits/internal/task"
 	"gopkg.in/yaml.v3"
+
+	"github.com/abatilo/bits/internal/task"
 )
 
 const frontmatterDelimiter = "---"
@@ -57,11 +58,12 @@ func ParseMarkdown(content []byte) (*task.Task, error) {
 
 	var closedAt *time.Time
 	if fm.ClosedAt != nil {
-		t, err := parseTime(*fm.ClosedAt)
+		var parsedClosedAt time.Time
+		parsedClosedAt, err = parseTime(*fm.ClosedAt)
 		if err != nil {
 			return nil, &parseError{"invalid closed_at: " + err.Error()}
 		}
-		closedAt = &t
+		closedAt = &parsedClosedAt
 	}
 
 	// Extract description (everything after frontmatter)
@@ -103,11 +105,13 @@ func SerializeMarkdown(t *task.Task) ([]byte, error) {
 	buf.WriteString(frontmatterDelimiter + "\n")
 
 	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
+	enc.SetIndent(2) //nolint:mnd // Standard YAML indentation
 	if err := enc.Encode(fm); err != nil {
 		return nil, err
 	}
-	enc.Close()
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
 
 	buf.WriteString(frontmatterDelimiter + "\n")
 

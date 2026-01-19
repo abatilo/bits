@@ -1,89 +1,90 @@
+//nolint:revive // Package name intentionally matches stdlib for domain clarity
 package errors
 
 import "fmt"
 
-// ErrNotInitialized indicates ~/.bits doesn't exist.
-type ErrNotInitialized struct{}
+// NotInitializedError indicates ~/.bits doesn't exist.
+type NotInitializedError struct{}
 
-func (e ErrNotInitialized) Error() string {
+func (e NotInitializedError) Error() string {
 	return "bits not initialized: run 'bits init' first"
 }
 
-// ErrAlreadyInitialized indicates ~/.bits already exists.
-type ErrAlreadyInitialized struct{}
+// AlreadyInitializedError indicates ~/.bits already exists.
+type AlreadyInitializedError struct{}
 
-func (e ErrAlreadyInitialized) Error() string {
+func (e AlreadyInitializedError) Error() string {
 	return "bits already initialized"
 }
 
-// ErrTaskNotFound indicates the task ID doesn't match any file.
-type ErrTaskNotFound struct {
+// TaskNotFoundError indicates the task ID doesn't match any file.
+type TaskNotFoundError struct {
 	ID string
 }
 
-func (e ErrTaskNotFound) Error() string {
+func (e TaskNotFoundError) Error() string {
 	return fmt.Sprintf("task not found: %s", e.ID)
 }
 
-// ErrAlreadyExists indicates an ID collision.
-type ErrAlreadyExists struct {
+// AlreadyExistsError indicates an ID collision.
+type AlreadyExistsError struct {
 	ID string
 }
 
-func (e ErrAlreadyExists) Error() string {
+func (e AlreadyExistsError) Error() string {
 	return fmt.Sprintf("task already exists: %s", e.ID)
 }
 
-// ErrBlocked indicates a task has unclosed dependencies.
-type ErrBlocked struct {
-	ID           string
-	BlockedBy    []string
+// BlockedError indicates a task has unclosed dependencies.
+type BlockedError struct {
+	ID        string
+	BlockedBy []string
 }
 
-func (e ErrBlocked) Error() string {
+func (e BlockedError) Error() string {
 	return fmt.Sprintf("task %s is blocked by: %v", e.ID, e.BlockedBy)
 }
 
-// ErrCycle indicates adding a dependency would create a cycle.
-type ErrCycle struct {
+// CycleError indicates adding a dependency would create a cycle.
+type CycleError struct {
 	From string
 	To   string
 }
 
-func (e ErrCycle) Error() string {
+func (e CycleError) Error() string {
 	return fmt.Sprintf("adding dependency %s -> %s would create a cycle", e.From, e.To)
 }
 
-// ErrInvalidStatus indicates the task has the wrong status for the operation.
-type ErrInvalidStatus struct {
+// InvalidStatusError indicates the task has the wrong status for the operation.
+type InvalidStatusError struct {
 	ID       string
 	Current  string
 	Expected string
 }
 
-func (e ErrInvalidStatus) Error() string {
+func (e InvalidStatusError) Error() string {
 	return fmt.Sprintf("task %s has status '%s', expected '%s'", e.ID, e.Current, e.Expected)
 }
 
-// ErrMissingReason indicates close was called without a reason.
-type ErrMissingReason struct{}
+// MissingReasonError indicates close was called without a reason.
+type MissingReasonError struct{}
 
-func (e ErrMissingReason) Error() string {
+func (e MissingReasonError) Error() string {
 	return "close reason is required"
 }
 
-// ErrInvalidPriority indicates an invalid priority value.
-type ErrInvalidPriority struct {
+// InvalidPriorityError indicates an invalid priority value.
+type InvalidPriorityError struct {
 	Value string
 }
 
-func (e ErrInvalidPriority) Error() string {
+func (e InvalidPriorityError) Error() string {
 	return fmt.Sprintf("invalid priority: %s (valid: critical, high, medium, low)", e.Value)
 }
 
-// ErrNotInRepo indicates the command was run outside a git repository.
-type ErrNotInRepo struct{}
+// NotInRepoError indicates the command was run outside a git repository.
+type NotInRepoError struct{}
 
-func (e ErrNotInRepo) Error() string {
+func (e NotInRepoError) Error() string {
 	return "not in a git repository (bits requires a project root)"
 }

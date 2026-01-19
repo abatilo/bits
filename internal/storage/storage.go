@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	bitsDir     = ".bits"
-	fileExt     = ".md"
+	bitsDir = ".bits"
+	fileExt = ".md"
 )
 
 // Store handles task file operations.
@@ -57,9 +57,10 @@ func (s *Store) IsInitialized() bool {
 // Init creates the bits directory.
 func (s *Store) Init(force bool) error {
 	if s.IsInitialized() && !force {
-		return bitserrors.ErrAlreadyInitialized{}
+		return bitserrors.AlreadyInitializedError{}
 	}
-	return os.MkdirAll(s.basePath, 0755)
+	//nolint:gosec // G301: 0755 is appropriate for user-accessible task directory
+	return os.MkdirAll(s.basePath, 0o755)
 }
 
 // taskPath returns the full path for a task file.
@@ -76,23 +77,24 @@ func (s *Store) Exists(id string) bool {
 // Save writes a task to disk.
 func (s *Store) Save(t *task.Task) error {
 	if !s.IsInitialized() {
-		return bitserrors.ErrNotInitialized{}
+		return bitserrors.NotInitializedError{}
 	}
 	content, err := SerializeMarkdown(t)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.taskPath(t.ID), content, 0644)
+	//nolint:gosec // G306: 0644 is appropriate for user-readable task files
+	return os.WriteFile(s.taskPath(t.ID), content, 0o644)
 }
 
 // Load reads a task from disk.
 func (s *Store) Load(id string) (*task.Task, error) {
 	if !s.IsInitialized() {
-		return nil, bitserrors.ErrNotInitialized{}
+		return nil, bitserrors.NotInitializedError{}
 	}
 	content, err := os.ReadFile(s.taskPath(id))
 	if os.IsNotExist(err) {
-		return nil, bitserrors.ErrTaskNotFound{ID: id}
+		return nil, bitserrors.TaskNotFoundError{ID: id}
 	}
 	if err != nil {
 		return nil, err
@@ -103,11 +105,11 @@ func (s *Store) Load(id string) (*task.Task, error) {
 // Delete removes a task file.
 func (s *Store) Delete(id string) error {
 	if !s.IsInitialized() {
-		return bitserrors.ErrNotInitialized{}
+		return bitserrors.NotInitializedError{}
 	}
 	err := os.Remove(s.taskPath(id))
 	if os.IsNotExist(err) {
-		return bitserrors.ErrTaskNotFound{ID: id}
+		return bitserrors.TaskNotFoundError{ID: id}
 	}
 	return err
 }
@@ -115,7 +117,7 @@ func (s *Store) Delete(id string) error {
 // List returns all tasks, optionally filtered and sorted.
 func (s *Store) List(filter StatusFilter) ([]*task.Task, error) {
 	if !s.IsInitialized() {
-		return nil, bitserrors.ErrNotInitialized{}
+		return nil, bitserrors.NotInitializedError{}
 	}
 
 	entries, err := os.ReadDir(s.basePath)
@@ -129,7 +131,8 @@ func (s *Store) List(filter StatusFilter) ([]*task.Task, error) {
 			continue
 		}
 		id := strings.TrimSuffix(entry.Name(), fileExt)
-		t, err := s.Load(id)
+		var t *task.Task
+		t, err = s.Load(id)
 		if err != nil {
 			continue // Skip malformed files
 		}
@@ -154,7 +157,7 @@ func (s *Store) List(filter StatusFilter) ([]*task.Task, error) {
 // AllIDs returns all task IDs (for ID generation collision checking).
 func (s *Store) AllIDs() (map[string]bool, error) {
 	if !s.IsInitialized() {
-		return nil, bitserrors.ErrNotInitialized{}
+		return nil, bitserrors.NotInitializedError{}
 	}
 
 	entries, err := os.ReadDir(s.basePath)
@@ -192,7 +195,7 @@ func (s *Store) RemoveDependency(depID string) error {
 		}
 		if modified {
 			t.DependsOn = newDeps
-			if err := s.Save(t); err != nil {
+			if err = s.Save(t); err != nil {
 				return err
 			}
 		}
@@ -203,7 +206,7 @@ func (s *Store) RemoveDependency(depID string) error {
 // CreateTask creates a new task with generated ID.
 func (s *Store) CreateTask(title, description string, priority task.Priority) (*task.Task, error) {
 	if !s.IsInitialized() {
-		return nil, bitserrors.ErrNotInitialized{}
+		return nil, bitserrors.NotInitializedError{}
 	}
 
 	createdAt := time.Now().UTC()
@@ -227,7 +230,7 @@ func (s *Store) CreateTask(title, description string, priority task.Priority) (*
 		Description: description,
 	}
 
-	if err := s.Save(t); err != nil {
+	if err = s.Save(t); err != nil {
 		return nil, err
 	}
 	return t, nil

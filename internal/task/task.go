@@ -21,19 +21,28 @@ const (
 	PriorityLow      Priority = "low"
 )
 
+// Priority sort order constants (lower = higher priority).
+const (
+	priorityOrderCritical = 0
+	priorityOrderHigh     = 1
+	priorityOrderMedium   = 2
+	priorityOrderLow      = 3
+	priorityOrderUnknown  = 4
+)
+
 // PriorityOrder returns the sort order for a priority (lower = higher priority).
 func PriorityOrder(p Priority) int {
 	switch p {
 	case PriorityCritical:
-		return 0
+		return priorityOrderCritical
 	case PriorityHigh:
-		return 1
+		return priorityOrderHigh
 	case PriorityMedium:
-		return 2
+		return priorityOrderMedium
 	case PriorityLow:
-		return 3
+		return priorityOrderLow
 	default:
-		return 4
+		return priorityOrderUnknown
 	}
 }
 
