@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	bitserrors "github.com/abatilo/bits/internal/errors"
 )
 
 var nonAlphanumericRe = regexp.MustCompile(`[^a-zA-Z0-9]+`)
@@ -31,7 +29,7 @@ func FindProjectRoot() (string, error) {
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			// Reached root without finding .git
-			return "", bitserrors.NotInRepoError{}
+			return "", NotInRepoError{}
 		}
 		dir = parent
 	}

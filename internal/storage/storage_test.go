@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	bitserrors "github.com/abatilo/bits/internal/errors"
 	"github.com/abatilo/bits/internal/task"
 )
 
@@ -286,8 +285,8 @@ func TestFindProjectRoot(t *testing.T) {
 		if err == nil {
 			t.Error("FindProjectRoot() should return error when no .git found")
 		}
-		if !errors.Is(err, bitserrors.NotInRepoError{}) {
-			var notInRepo bitserrors.NotInRepoError
+		if !errors.Is(err, NotInRepoError{}) {
+			var notInRepo NotInRepoError
 			if !errors.As(err, &notInRepo) {
 				t.Errorf("FindProjectRoot() error = %v, want NotInRepoError", err)
 			}

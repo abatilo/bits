@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/abatilo/bits/internal/deps"
-	bitserrors "github.com/abatilo/bits/internal/errors"
 	"github.com/abatilo/bits/internal/output"
 	"github.com/abatilo/bits/internal/storage"
 	"github.com/abatilo/bits/internal/task"
@@ -110,7 +109,7 @@ func addCmd() *cobra.Command {
 
 			p := task.Priority(priority)
 			if !task.IsValidPriority(p) {
-				printError(bitserrors.InvalidPriorityError{Value: priority})
+				printError(InvalidPriorityError{Value: priority})
 			}
 
 			t, err := store.CreateTask(args[0], description, p)
@@ -218,7 +217,7 @@ func claimCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusOpen {
-				printError(bitserrors.InvalidStatusError{
+				printError(InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusOpen),
@@ -233,13 +232,13 @@ func claimCmd() *cobra.Command {
 
 			// Check if another task is already active
 			if active := task.FindActive(tasks); active != nil {
-				printError(bitserrors.ActiveTaskExistsError{ID: active.ID, Title: active.Title})
+				printError(ActiveTaskExistsError{ID: active.ID, Title: active.Title})
 			}
 
 			graph := deps.NewGraph(tasks)
 			blockers := graph.BlockedBy(t.ID)
 			if len(blockers) > 0 {
-				printError(bitserrors.BlockedError{ID: t.ID, BlockedBy: blockers})
+				printError(deps.BlockedError{ID: t.ID, BlockedBy: blockers})
 			}
 
 			t.Status = task.StatusActive
@@ -269,7 +268,7 @@ func releaseCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusActive {
-				printError(bitserrors.InvalidStatusError{
+				printError(InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusActive),
@@ -303,7 +302,7 @@ func closeCmd() *cobra.Command {
 			}
 
 			if t.Status != task.StatusActive {
-				printError(bitserrors.InvalidStatusError{
+				printError(InvalidStatusError{
 					ID:       t.ID,
 					Current:  string(t.Status),
 					Expected: string(task.StatusActive),
@@ -312,7 +311,7 @@ func closeCmd() *cobra.Command {
 
 			reason := args[1]
 			if reason == "" {
-				printError(bitserrors.MissingReasonError{})
+				printError(MissingReasonError{})
 			}
 
 			now := time.Now().UTC()

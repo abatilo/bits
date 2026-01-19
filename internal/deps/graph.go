@@ -4,8 +4,8 @@ import (
 	"slices"
 	"sort"
 
-	bitserrors "github.com/abatilo/bits/internal/errors"
 	"github.com/abatilo/bits/internal/output"
+	"github.com/abatilo/bits/internal/storage"
 	"github.com/abatilo/bits/internal/task"
 )
 
@@ -130,13 +130,13 @@ func (g *Graph) Dependents(id string) []string {
 // ValidateAddDep validates adding a dependency from -> to.
 func (g *Graph) ValidateAddDep(from, to string) error {
 	if g.tasks[from] == nil {
-		return bitserrors.TaskNotFoundError{ID: from}
+		return storage.TaskNotFoundError{ID: from}
 	}
 	if g.tasks[to] == nil {
-		return bitserrors.TaskNotFoundError{ID: to}
+		return storage.TaskNotFoundError{ID: to}
 	}
 	if g.WouldCreateCycle(from, to) {
-		return bitserrors.CycleError{From: from, To: to}
+		return CycleError{From: from, To: to}
 	}
 	return nil
 }
