@@ -1,8 +1,3 @@
----
-paths:
-  - "**/*.go"
----
-
 # Quality Checks
 
 Run quality checks after making code changes using mise.
