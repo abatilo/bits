@@ -88,3 +88,13 @@ type NotInRepoError struct{}
 func (e NotInRepoError) Error() string {
 	return "not in a git repository (bits requires a project root)"
 }
+
+// ActiveTaskExistsError indicates a task is already active.
+type ActiveTaskExistsError struct {
+	ID    string
+	Title string
+}
+
+func (e ActiveTaskExistsError) Error() string {
+	return fmt.Sprintf("task %s (%s) is already active; release or close it first", e.ID, e.Title)
+}

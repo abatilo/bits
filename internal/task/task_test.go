@@ -62,6 +62,69 @@ func TestPriorityOrder(t *testing.T) {
 	}
 }
 
+func TestFindActive(t *testing.T) {
+	tests := []struct {
+		name    string
+		tasks   []*Task
+		wantID  string
+		wantNil bool
+	}{
+		{
+			name:    "returns nil for nil slice",
+			tasks:   nil,
+			wantNil: true,
+		},
+		{
+			name:    "returns nil for empty slice",
+			tasks:   []*Task{},
+			wantNil: true,
+		},
+		{
+			name: "returns nil when no active tasks",
+			tasks: []*Task{
+				{ID: "t1", Status: StatusOpen},
+				{ID: "t2", Status: StatusClosed},
+			},
+			wantNil: true,
+		},
+		{
+			name: "returns active task when one exists",
+			tasks: []*Task{
+				{ID: "t1", Status: StatusOpen},
+				{ID: "t2", Status: StatusActive},
+				{ID: "t3", Status: StatusClosed},
+			},
+			wantID: "t2",
+		},
+		{
+			name: "returns first active task when multiple exist",
+			tasks: []*Task{
+				{ID: "t1", Status: StatusActive},
+				{ID: "t2", Status: StatusActive},
+			},
+			wantID: "t1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FindActive(tt.tasks)
+			if tt.wantNil {
+				if got != nil {
+					t.Errorf("FindActive() = %v, want nil", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatal("FindActive() = nil, want non-nil")
+			}
+			if got.ID != tt.wantID {
+				t.Errorf("FindActive().ID = %v, want %v", got.ID, tt.wantID)
+			}
+		})
+	}
+}
+
 func TestGenerateID(t *testing.T) {
 	now := time.Now()
 

@@ -78,3 +78,13 @@ func IsValidPriority(p Priority) bool {
 		return false
 	}
 }
+
+// FindActive returns the first active task from a slice, or nil if none.
+func FindActive(tasks []*Task) *Task {
+	for _, t := range tasks {
+		if t.Status == StatusActive {
+			return t
+		}
+	}
+	return nil
+}

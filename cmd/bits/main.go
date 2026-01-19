@@ -223,11 +223,17 @@ func claimCmd() *cobra.Command {
 				})
 			}
 
-			// Check dependencies
+			// Check dependencies and active tasks
 			tasks, err := store.List(storage.StatusFilter{})
 			if err != nil {
 				printError(err)
 			}
+
+			// Check if another task is already active
+			if active := task.FindActive(tasks); active != nil {
+				printError(bitserrors.ActiveTaskExistsError{ID: active.ID, Title: active.Title})
+			}
+
 			graph := deps.NewGraph(tasks)
 			blockers := graph.BlockedBy(t.ID)
 			if len(blockers) > 0 {
