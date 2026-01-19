@@ -11,7 +11,7 @@ losing focus.
 - **One task at a time**: Only one task can be active. This constraint keeps
   agents focused and prevents half-finished work.
 - **File-based storage**: Tasks are Markdown files with YAML frontmatter. Human
-  readable, git-friendly, no database required.
+  readable, no database required.
 - **Git repository scoping**: Tasks are scoped to the git repository you're
   working in. Different projects have different task lists.
 - **Dependencies with cycle detection**: Tasks can depend on other tasks. bits
