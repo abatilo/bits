@@ -69,28 +69,28 @@ func (f *HumanFormatter) formatTaskLine(t *task.Task) string {
 func (f *HumanFormatter) statusIcon(s task.Status) string {
 	switch s {
 	case task.StatusOpen:
-		return "o"
+		return "[ ]"
 	case task.StatusActive:
-		return ">"
+		return "[*]"
 	case task.StatusClosed:
-		return "x"
+		return "[X]"
 	default:
-		return "?"
+		return "[?]"
 	}
 }
 
 func (f *HumanFormatter) priorityMark(p task.Priority) string {
 	switch p {
 	case task.PriorityCritical:
-		return "!!!"
+		return "P0"
 	case task.PriorityHigh:
-		return "!!"
+		return "P1"
 	case task.PriorityMedium:
-		return "!"
+		return "P2"
 	case task.PriorityLow:
-		return "."
+		return "P3"
 	default:
-		return " "
+		return "P?"
 	}
 }
 
