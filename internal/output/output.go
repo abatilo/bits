@@ -8,11 +8,4 @@ type Formatter interface {
 	FormatTaskList(tasks []*task.Task) string
 	FormatError(err error) string
 	FormatMessage(msg string) string
-	FormatGraph(nodes []GraphNode) string
-}
-
-// GraphNode represents a node in the dependency graph output.
-type GraphNode struct {
-	Task     *task.Task
-	Children []GraphNode
 }

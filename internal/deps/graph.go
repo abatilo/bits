@@ -4,7 +4,6 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/abatilo/bits/internal/output"
 	"github.com/abatilo/bits/internal/storage"
 	"github.com/abatilo/bits/internal/task"
 )
@@ -150,57 +149,4 @@ func taskLess(a, b *task.Task) bool {
 		return pa < pb
 	}
 	return a.CreatedAt.Before(b.CreatedAt)
-}
-
-// BuildTree builds a tree representation of tasks for graph display.
-// Returns root nodes (tasks with no dependents).
-func (g *Graph) BuildTree() []output.GraphNode {
-	// Tasks that are dependencies have children (tasks that depend on them)
-	children := make(map[string][]*task.Task)
-	for _, t := range g.tasks {
-		for _, depID := range t.DependsOn {
-			children[depID] = append(children[depID], t)
-		}
-	}
-
-	// Find roots: tasks that no one depends on
-	var roots []*task.Task
-	for _, t := range g.tasks {
-		if len(g.Dependents(t.ID)) == 0 {
-			roots = append(roots, t)
-		}
-	}
-
-	// Sort roots by priority then created_at
-	sort.Slice(roots, func(i, j int) bool {
-		return taskLess(roots[i], roots[j])
-	})
-
-	// Build tree from roots
-	var buildNode func(t *task.Task, visited map[string]bool) output.GraphNode
-	buildNode = func(t *task.Task, visited map[string]bool) output.GraphNode {
-		node := output.GraphNode{Task: t}
-		if visited[t.ID] {
-			return node // Prevent infinite recursion
-		}
-		visited[t.ID] = true
-
-		// Children are tasks that have this task as a dependency
-		for _, child := range children[t.ID] {
-			node.Children = append(node.Children, buildNode(child, visited))
-		}
-
-		// Sort children
-		sort.Slice(node.Children, func(i, j int) bool {
-			return taskLess(node.Children[i].Task, node.Children[j].Task)
-		})
-
-		return node
-	}
-
-	var nodes []output.GraphNode
-	for _, root := range roots {
-		nodes = append(nodes, buildNode(root, make(map[string]bool)))
-	}
-	return nodes
 }

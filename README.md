@@ -182,22 +182,6 @@ Remove a dependency.
 bits undep abc123 xyz789
 ```
 
-### graph
-
-Display the dependency graph as ASCII art.
-
-```bash
-bits graph
-```
-
-Output:
-```
-o [abc123] Fix the login bug
-├── o [def456] Update auth module
-│   └── o [ghi789] Write tests
-└── o [jkl012] Update documentation
-```
-
 ### rm
 
 Remove a task and clean up any references to it in other tasks' dependencies.

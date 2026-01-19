@@ -85,35 +85,3 @@ type messageJSON struct {
 func (f *JSONFormatter) FormatMessage(msg string) string {
 	return marshalJSON(messageJSON{Message: msg})
 }
-
-// graphNodeJSON is the JSON representation of a graph node.
-type graphNodeJSON struct {
-	ID       string          `json:"id"`
-	Title    string          `json:"title"`
-	Status   string          `json:"status"`
-	Priority string          `json:"priority"`
-	Children []graphNodeJSON `json:"children,omitempty"`
-}
-
-func toGraphNodeJSON(node GraphNode) graphNodeJSON {
-	children := make([]graphNodeJSON, len(node.Children))
-	for i, c := range node.Children {
-		children[i] = toGraphNodeJSON(c)
-	}
-	return graphNodeJSON{
-		ID:       node.Task.ID,
-		Title:    node.Task.Title,
-		Status:   string(node.Task.Status),
-		Priority: string(node.Task.Priority),
-		Children: children,
-	}
-}
-
-// FormatGraph formats a dependency graph as JSON.
-func (f *JSONFormatter) FormatGraph(nodes []GraphNode) string {
-	jsonNodes := make([]graphNodeJSON, len(nodes))
-	for i, n := range nodes {
-		jsonNodes[i] = toGraphNodeJSON(n)
-	}
-	return marshalJSON(jsonNodes)
-}

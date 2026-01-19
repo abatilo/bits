@@ -48,7 +48,6 @@ func main() {
 		closeCmd(),
 		depCmd(),
 		undepCmd(),
-		graphCmd(),
 		pruneCmd(),
 		rmCmd(),
 		hookCmd(),
@@ -403,29 +402,6 @@ func undepCmd() *cobra.Command {
 				printError(err)
 			}
 			printOutput(formatter.FormatTask(t))
-		},
-	}
-}
-
-// graphCmd implements 'bits graph'.
-func graphCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "graph",
-		Short: "Display dependency graph",
-		Run: func(_ *cobra.Command, _ []string) {
-			store, err := getStore()
-			if err != nil {
-				printError(err)
-			}
-
-			tasks, err := store.List(storage.StatusFilter{})
-			if err != nil {
-				printError(err)
-			}
-
-			graph := deps.NewGraph(tasks)
-			tree := graph.BuildTree()
-			printOutput(formatter.FormatGraph(tree))
 		},
 	}
 }
