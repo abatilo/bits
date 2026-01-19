@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -51,6 +52,7 @@ func main() {
 		graphCmd(),
 		pruneCmd(),
 		rmCmd(),
+		hookCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
@@ -492,4 +494,48 @@ func rmCmd() *cobra.Command {
 			printOutput(formatter.FormatMessage(fmt.Sprintf("Removed task %s", taskID)))
 		},
 	}
+}
+
+// hookCmd implements 'bits hook' for Claude Code stop hook integration.
+func hookCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "hook",
+		Short: "Claude Code stop hook integration",
+		Run: func(_ *cobra.Command, _ []string) {
+			store, err := getStore()
+			if err != nil {
+				os.Exit(0) // Allow stop on error
+			}
+
+			tasks, err := store.List(storage.StatusFilter{Active: true})
+			if err != nil || len(tasks) == 0 {
+				os.Exit(0) // Allow stop
+			}
+
+			// Output block JSON directly (bypasses formatter)
+			os.Stdout.WriteString(
+				formatHookBlock(tasks[0].ID) + "\n",
+			) //nolint:gosec // stdout write errors are unrecoverable
+		},
+	}
+}
+
+func formatHookBlock(id string) string {
+	type hookResponse struct {
+		Decision      string `json:"decision"`
+		Reason        string `json:"reason"`
+		SystemMessage string `json:"systemMessage"`
+	}
+	resp := hookResponse{
+		Decision: "block",
+		Reason: fmt.Sprintf(
+			"Work on task %s. Run 'bits show %s' for details. When complete: bits close %s \"reason\".",
+			id,
+			id,
+			id,
+		),
+		SystemMessage: fmt.Sprintf("Task %s: Still active", id),
+	}
+	b, _ := json.Marshal(resp)
+	return string(b)
 }
