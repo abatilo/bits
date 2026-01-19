@@ -3,7 +3,8 @@ go = "1.25.5"
 
 [tasks.build]
 description = "Build bits binary"
-run = "go build -o bin/bits ./cmd/bits"
+env = { CGO_ENABLED = "0" }
+run = "go build -ldflags=\"-w -s\" -o bin/bits ./cmd/bits"
 sources = ["cmd/**/*.go", "internal/**/*.go", "go.mod", "go.sum"]
 outputs = ["bin/bits"]
 
