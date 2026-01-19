@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -194,17 +195,11 @@ func (s *Store) RemoveDependency(depID string) error {
 	}
 
 	for _, t := range tasks {
-		modified := false
-		newDeps := make([]string, 0, len(t.DependsOn))
-		for _, d := range t.DependsOn {
-			if d != depID {
-				newDeps = append(newDeps, d)
-			} else {
-				modified = true
-			}
-		}
-		if modified {
-			t.DependsOn = newDeps
+		originalLen := len(t.DependsOn)
+		t.DependsOn = slices.DeleteFunc(t.DependsOn, func(d string) bool {
+			return d == depID
+		})
+		if len(t.DependsOn) != originalLen {
 			if err = s.Save(t); err != nil {
 				return err
 			}

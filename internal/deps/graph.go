@@ -31,20 +31,7 @@ func (g *Graph) Get(id string) *task.Task {
 
 // IsBlocked returns true if the task has any unclosed dependencies.
 func (g *Graph) IsBlocked(id string) bool {
-	t := g.tasks[id]
-	if t == nil {
-		return false
-	}
-	for _, depID := range t.DependsOn {
-		dep := g.tasks[depID]
-		if dep == nil {
-			continue // Missing dependency is not blocking
-		}
-		if dep.Status != task.StatusClosed {
-			return true
-		}
-	}
-	return false
+	return len(g.BlockedBy(id)) > 0
 }
 
 // BlockedBy returns the IDs of unclosed tasks that block this task.
