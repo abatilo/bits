@@ -110,12 +110,7 @@ func (g *Graph) Ready() []*task.Task {
 
 	// Sort by priority then created_at
 	sort.Slice(ready, func(i, j int) bool {
-		pi := task.PriorityOrder(ready[i].Priority)
-		pj := task.PriorityOrder(ready[j].Priority)
-		if pi != pj {
-			return pi < pj
-		}
-		return ready[i].CreatedAt.Before(ready[j].CreatedAt)
+		return taskLess(ready[i], ready[j])
 	})
 
 	return ready
@@ -146,19 +141,20 @@ func (g *Graph) ValidateAddDep(from, to string) error {
 	return nil
 }
 
+// taskLess returns true if task a should be sorted before task b.
+// Sorts by priority first (critical < high < medium < low), then by creation time.
+func taskLess(a, b *task.Task) bool {
+	pa := task.PriorityOrder(a.Priority)
+	pb := task.PriorityOrder(b.Priority)
+	if pa != pb {
+		return pa < pb
+	}
+	return a.CreatedAt.Before(b.CreatedAt)
+}
+
 // BuildTree builds a tree representation of tasks for graph display.
 // Returns root nodes (tasks with no dependents).
-//
-//nolint:gocognit // Tree building algorithm requires nested iteration
 func (g *Graph) BuildTree() []output.GraphNode {
-	// Find root tasks (tasks that nothing depends on)
-	hasParent := make(map[string]bool)
-	for _, t := range g.tasks {
-		for _, depID := range t.DependsOn {
-			hasParent[depID] = false // Mark as a dependency
-		}
-	}
-
 	// Tasks that are dependencies have children (tasks that depend on them)
 	children := make(map[string][]*task.Task)
 	for _, t := range g.tasks {
@@ -170,28 +166,14 @@ func (g *Graph) BuildTree() []output.GraphNode {
 	// Find roots: tasks that no one depends on
 	var roots []*task.Task
 	for _, t := range g.tasks {
-		isRoot := true
-		for _, other := range g.tasks {
-			if slices.Contains(other.DependsOn, t.ID) {
-				isRoot = false
-			}
-			if !isRoot {
-				break
-			}
-		}
-		if isRoot {
+		if len(g.Dependents(t.ID)) == 0 {
 			roots = append(roots, t)
 		}
 	}
 
 	// Sort roots by priority then created_at
 	sort.Slice(roots, func(i, j int) bool {
-		pi := task.PriorityOrder(roots[i].Priority)
-		pj := task.PriorityOrder(roots[j].Priority)
-		if pi != pj {
-			return pi < pj
-		}
-		return roots[i].CreatedAt.Before(roots[j].CreatedAt)
+		return taskLess(roots[i], roots[j])
 	})
 
 	// Build tree from roots
@@ -210,12 +192,7 @@ func (g *Graph) BuildTree() []output.GraphNode {
 
 		// Sort children
 		sort.Slice(node.Children, func(i, j int) bool {
-			pi := task.PriorityOrder(node.Children[i].Task.Priority)
-			pj := task.PriorityOrder(node.Children[j].Task.Priority)
-			if pi != pj {
-				return pi < pj
-			}
-			return node.Children[i].Task.CreatedAt.Before(node.Children[j].Task.CreatedAt)
+			return taskLess(node.Children[i].Task, node.Children[j].Task)
 		})
 
 		return node

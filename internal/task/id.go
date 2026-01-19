@@ -14,7 +14,6 @@ const (
 	maxIDLength  = 8
 	nonceSize    = 16 // 128 bits of entropy
 	hexChunkSize = 4  // Process 4 hex chars (16 bits) at a time for base36 conversion
-	base36Chars  = "0123456789abcdefghijklmnopqrstuvwxyz"
 )
 
 // GenerateID creates a unique task ID using hash-based generation with adaptive length.
@@ -59,20 +58,7 @@ func hexToBase36(hexStr string) string {
 		end := min(i+hexChunkSize, len(hexStr))
 		chunk := hexStr[i:end]
 		val, _ := strconv.ParseUint(chunk, 16, 64)
-		result.WriteString(toBase36(val))
+		result.WriteString(strconv.FormatUint(val, 36))
 	}
 	return result.String()
-}
-
-// toBase36 converts a uint64 to base36 string.
-func toBase36(n uint64) string {
-	if n == 0 {
-		return "0"
-	}
-	var result []byte
-	for n > 0 {
-		result = append([]byte{base36Chars[n%36]}, result...)
-		n /= 36
-	}
-	return string(result)
 }

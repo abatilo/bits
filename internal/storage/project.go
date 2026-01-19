@@ -9,6 +9,8 @@ import (
 	bitserrors "github.com/abatilo/bits/internal/errors"
 )
 
+var nonAlphanumericRe = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+
 // FindProjectRoot walks up from cwd looking for .git directory.
 // Returns the directory containing .git, or error if not found.
 func FindProjectRoot() (string, error) {
@@ -42,8 +44,7 @@ func SanitizePath(path string) string {
 	result := strings.TrimPrefix(path, "/")
 
 	// Replace non-alphanumeric chars with dash
-	re := regexp.MustCompile(`[^a-zA-Z0-9]+`)
-	result = re.ReplaceAllString(result, "-")
+	result = nonAlphanumericRe.ReplaceAllString(result, "-")
 
 	// Trim leading/trailing dashes
 	result = strings.Trim(result, "-")

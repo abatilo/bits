@@ -10,6 +10,12 @@ import (
 // JSONFormatter formats output as JSON.
 type JSONFormatter struct{}
 
+// marshalJSON marshals a value to indented JSON with a trailing newline.
+func marshalJSON(v any) string {
+	data, _ := json.MarshalIndent(v, "", "  ")
+	return string(data) + "\n"
+}
+
 // NewJSONFormatter creates a new JSONFormatter.
 func NewJSONFormatter() *JSONFormatter {
 	return &JSONFormatter{}
@@ -48,8 +54,7 @@ func toTaskJSON(t *task.Task) taskJSON {
 
 // FormatTask formats a single task as JSON.
 func (f *JSONFormatter) FormatTask(t *task.Task) string {
-	data, _ := json.MarshalIndent(toTaskJSON(t), "", "  ")
-	return string(data) + "\n"
+	return marshalJSON(toTaskJSON(t))
 }
 
 // FormatTaskList formats a list of tasks as JSON.
@@ -58,8 +63,7 @@ func (f *JSONFormatter) FormatTaskList(tasks []*task.Task) string {
 	for i, t := range tasks {
 		jsonTasks[i] = toTaskJSON(t)
 	}
-	data, _ := json.MarshalIndent(jsonTasks, "", "  ")
-	return string(data) + "\n"
+	return marshalJSON(jsonTasks)
 }
 
 // errorJSON is the JSON representation of an error.
@@ -69,8 +73,7 @@ type errorJSON struct {
 
 // FormatError formats an error as JSON.
 func (f *JSONFormatter) FormatError(err error) string {
-	data, _ := json.MarshalIndent(errorJSON{Error: err.Error()}, "", "  ")
-	return string(data) + "\n"
+	return marshalJSON(errorJSON{Error: err.Error()})
 }
 
 // messageJSON is the JSON representation of a message.
@@ -80,8 +83,7 @@ type messageJSON struct {
 
 // FormatMessage formats a simple message as JSON.
 func (f *JSONFormatter) FormatMessage(msg string) string {
-	data, _ := json.MarshalIndent(messageJSON{Message: msg}, "", "  ")
-	return string(data) + "\n"
+	return marshalJSON(messageJSON{Message: msg})
 }
 
 // graphNodeJSON is the JSON representation of a graph node.
@@ -113,6 +115,5 @@ func (f *JSONFormatter) FormatGraph(nodes []GraphNode) string {
 	for i, n := range nodes {
 		jsonNodes[i] = toGraphNodeJSON(n)
 	}
-	data, _ := json.MarshalIndent(jsonNodes, "", "  ")
-	return string(data) + "\n"
+	return marshalJSON(jsonNodes)
 }

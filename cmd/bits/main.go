@@ -384,22 +384,14 @@ func undepCmd() *cobra.Command {
 			}
 
 			depID := args[1]
-			newDeps := make([]string, 0, len(t.DependsOn))
-			found := false
-			for _, d := range t.DependsOn {
-				if d != depID {
-					newDeps = append(newDeps, d)
-				} else {
-					found = true
-				}
-			}
-
-			if !found {
+			originalLen := len(t.DependsOn)
+			t.DependsOn = slices.DeleteFunc(t.DependsOn, func(d string) bool {
+				return d == depID
+			})
+			if len(t.DependsOn) == originalLen {
 				printOutput(formatter.FormatMessage("Dependency not found"))
 				return
 			}
-
-			t.DependsOn = newDeps
 			if err = store.Save(t); err != nil {
 				printError(err)
 			}
