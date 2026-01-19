@@ -513,9 +513,7 @@ func hookCmd() *cobra.Command {
 			}
 
 			// Output block JSON directly (bypasses formatter)
-			os.Stdout.WriteString(
-				formatHookBlock(tasks[0].ID) + "\n",
-			) //nolint:gosec // stdout write errors are unrecoverable
+			_, _ = os.Stdout.WriteString(formatHookBlock(tasks[0].ID) + "\n")
 		},
 	}
 }
