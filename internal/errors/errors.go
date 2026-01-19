@@ -1,4 +1,3 @@
-//nolint:revive // Package name intentionally matches stdlib for domain clarity
 package errors
 
 import "fmt"

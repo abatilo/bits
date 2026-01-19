@@ -7,9 +7,9 @@ import (
 
 func TestActiveTaskExistsError(t *testing.T) {
 	tests := []struct {
-		name  string
-		err   ActiveTaskExistsError
-		want  string
+		name string
+		err  ActiveTaskExistsError
+		want string
 	}{
 		{
 			name: "formats error with id and title",
