@@ -491,32 +491,54 @@ func hookCmd() *cobra.Command {
 				os.Exit(0) // Allow stop on error
 			}
 
-			tasks, err := store.List(storage.StatusFilter{Active: true})
-			if err != nil || len(tasks) == 0 {
-				os.Exit(0) // Allow stop
+			// Check for active tasks first
+			activeTasks, err := store.List(storage.StatusFilter{Active: true})
+			if err == nil && len(activeTasks) > 0 {
+				_, _ = os.Stdout.WriteString(formatActiveBlock(activeTasks[0]) + "\n")
+				return
 			}
 
-			// Output block JSON directly (bypasses formatter)
-			_, _ = os.Stdout.WriteString(formatHookBlock(tasks[0].ID) + "\n")
+			// Check for open tasks
+			openTasks, err := store.List(storage.StatusFilter{Open: true})
+			if err == nil && len(openTasks) > 0 {
+				_, _ = os.Stdout.WriteString(formatOpenBlock(len(openTasks)) + "\n")
+				return
+			}
+
+			os.Exit(0) // Allow stop - all tasks closed
 		},
 	}
 }
 
-func formatHookBlock(id string) string {
-	type hookResponse struct {
-		Decision      string `json:"decision"`
-		Reason        string `json:"reason"`
-		SystemMessage string `json:"systemMessage"`
-	}
+type hookResponse struct {
+	Decision      string `json:"decision"`
+	Reason        string `json:"reason"`
+	SystemMessage string `json:"systemMessage"`
+}
+
+func formatActiveBlock(t *task.Task) string {
 	resp := hookResponse{
 		Decision: "block",
 		Reason: fmt.Sprintf(
-			"Work on task %s. Run 'bits show %s' for details. When complete: bits close %s \"reason\".",
-			id,
-			id,
-			id,
+			"Continue working on task %s. Run 'bits show %s' for details. When complete: bits close %s \"reason\".",
+			t.ID,
+			t.ID,
+			t.ID,
 		),
-		SystemMessage: fmt.Sprintf("Task %s: Still active", id),
+		SystemMessage: fmt.Sprintf("Task %s: Still active", t.ID),
+	}
+	b, _ := json.Marshal(resp)
+	return string(b)
+}
+
+func formatOpenBlock(count int) string {
+	resp := hookResponse{
+		Decision: "block",
+		Reason: fmt.Sprintf(
+			"There are %d open tasks remaining. Use 'bits ready' to see available work.",
+			count,
+		),
+		SystemMessage: fmt.Sprintf("%d open tasks remaining", count),
 	}
 	b, _ := json.Marshal(resp)
 	return string(b)
