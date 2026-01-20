@@ -337,6 +337,42 @@ func TestFindProjectRoot(t *testing.T) {
 		}
 	})
 
+	t.Run("resolves symlinks in path", func(t *testing.T) {
+		// Create a real directory with .git
+		realDir := filepath.Join(tmpDir, "real-project")
+		if err := os.Mkdir(realDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
+			t.Fatalf("Failed to create real directory: %v", err)
+		}
+		gitDir := filepath.Join(realDir, ".git")
+		if err := os.Mkdir(gitDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
+			t.Fatalf("Failed to create .git: %v", err)
+		}
+		defer os.RemoveAll(realDir)
+
+		// Create a symlink pointing to the real directory
+		symlinkDir := filepath.Join(tmpDir, "symlink-project")
+		if err := os.Symlink(realDir, symlinkDir); err != nil { //nolint:govet // Intentional shadow in subtest
+			t.Fatalf("Failed to create symlink: %v", err)
+		}
+		defer os.Remove(symlinkDir)
+
+		// Change to the symlink path
+		t.Chdir(symlinkDir)
+
+		root, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
+		if err != nil {
+			t.Fatalf("FindProjectRoot() error = %v", err)
+		}
+
+		// Should return the resolved real path, not the symlink path
+		if root != realDir {
+			t.Errorf("FindProjectRoot() = %q, want resolved path %q", root, realDir)
+		}
+		if root == symlinkDir {
+			t.Errorf("FindProjectRoot() returned symlink path %q, should return resolved path", root)
+		}
+	})
+
 	t.Run("returns error when no .git found", func(t *testing.T) {
 		// Create a directory with no .git anywhere up the tree
 		noGitDir := filepath.Join(tmpDir, "no-git-here")

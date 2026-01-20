@@ -23,6 +23,11 @@ func FindProjectRoot() (string, error) {
 		var info os.FileInfo
 		info, err = os.Stat(gitPath)
 		if err == nil && info.IsDir() {
+			// Resolve symlinks to ensure consistent paths
+			dir, err = filepath.EvalSymlinks(dir)
+			if err != nil {
+				return "", err
+			}
 			return dir, nil
 		}
 
