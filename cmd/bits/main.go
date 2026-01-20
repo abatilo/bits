@@ -135,8 +135,9 @@ func addCmd() *cobra.Command {
 func listCmd() *cobra.Command {
 	var showOpen, showActive, showClosed bool
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List tasks",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List tasks",
 		Run: func(_ *cobra.Command, _ []string) {
 			store, err := getStore()
 			if err != nil {
