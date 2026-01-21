@@ -34,26 +34,16 @@ type drainResponse struct {
 func drainClaimCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "claim",
-		Short: "Activate drain mode (reads session_id from stdin)",
+		Short: "Activate drain mode",
 		Run: func(_ *cobra.Command, _ []string) {
-			input, err := session.ReadStdin()
-			if err != nil {
-				resp := drainResponse{
-					Success: false,
-					Message: "No session input provided",
-				}
-				data, _ := json.Marshal(resp)
-				printOutput(string(data) + "\n")
-				os.Exit(1)
-			}
-
 			store, err := getStore()
 			if err != nil {
 				printError(err)
 			}
 
-			// Check if session exists
-			if !session.Exists(store.BasePath()) {
+			// Load existing session to get session_id
+			sess, err := session.Load(store.BasePath())
+			if err != nil {
 				resp := drainResponse{
 					Success: false,
 					Message: "No session file exists. Run 'bits session claim' first.",
@@ -63,20 +53,10 @@ func drainClaimCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			success, err := session.SetDrainActive(store.BasePath(), input.SessionID, true)
+			// Use session's own ID - no external verification needed
+			_, err = session.SetDrainActive(store.BasePath(), sess.SessionID, true)
 			if err != nil {
 				printError(err)
-			}
-
-			if !success {
-				resp := drainResponse{
-					Success:     false,
-					DrainActive: false,
-					Message:     "Not session owner - cannot activate drain mode",
-				}
-				data, _ := json.Marshal(resp)
-				printOutput(string(data) + "\n")
-				os.Exit(1)
 			}
 
 			resp := drainResponse{
@@ -94,26 +74,16 @@ func drainClaimCmd() *cobra.Command {
 func drainReleaseCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "release",
-		Short: "Deactivate drain mode (reads session_id from stdin)",
+		Short: "Deactivate drain mode",
 		Run: func(_ *cobra.Command, _ []string) {
-			input, err := session.ReadStdin()
-			if err != nil {
-				resp := drainResponse{
-					Success: false,
-					Message: "No session input provided",
-				}
-				data, _ := json.Marshal(resp)
-				printOutput(string(data) + "\n")
-				os.Exit(1)
-			}
-
 			store, err := getStore()
 			if err != nil {
 				printError(err)
 			}
 
-			// Check if session exists
-			if !session.Exists(store.BasePath()) {
+			// Load existing session to get session_id
+			sess, err := session.Load(store.BasePath())
+			if err != nil {
 				resp := drainResponse{
 					Success:     false,
 					DrainActive: false,
@@ -124,20 +94,10 @@ func drainReleaseCmd() *cobra.Command {
 				return
 			}
 
-			success, err := session.SetDrainActive(store.BasePath(), input.SessionID, false)
+			// Use session's own ID - no external verification needed
+			_, err = session.SetDrainActive(store.BasePath(), sess.SessionID, false)
 			if err != nil {
 				printError(err)
-			}
-
-			if !success {
-				resp := drainResponse{
-					Success:     false,
-					DrainActive: false,
-					Message:     "Not session owner - cannot deactivate drain mode",
-				}
-				data, _ := json.Marshal(resp)
-				printOutput(string(data) + "\n")
-				os.Exit(1)
 			}
 
 			resp := drainResponse{
