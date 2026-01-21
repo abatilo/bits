@@ -50,7 +50,8 @@ func main() {
 		undepCmd(),
 		pruneCmd(),
 		rmCmd(),
-		hookCmd(),
+		sessionCmd(),
+		drainCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
@@ -476,36 +477,6 @@ func rmCmd() *cobra.Command {
 				printError(err)
 			}
 			printOutput(formatter.FormatMessage(fmt.Sprintf("Removed task %s", taskID)))
-		},
-	}
-}
-
-// hookCmd implements 'bits hook' for Claude Code stop hook integration.
-func hookCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "hook",
-		Short: "Claude Code stop hook integration",
-		Run: func(_ *cobra.Command, _ []string) {
-			store, err := getStore()
-			if err != nil {
-				os.Exit(0) // Allow stop on error
-			}
-
-			// Check for active tasks first
-			activeTasks, err := store.List(storage.StatusFilter{Active: true})
-			if err == nil && len(activeTasks) > 0 {
-				_, _ = os.Stdout.WriteString(formatActiveBlock(activeTasks[0]) + "\n")
-				return
-			}
-
-			// Check for open tasks
-			openTasks, err := store.List(storage.StatusFilter{Open: true})
-			if err == nil && len(openTasks) > 0 {
-				_, _ = os.Stdout.WriteString(formatOpenBlock(len(openTasks)) + "\n")
-				return
-			}
-
-			os.Exit(0) // Allow stop - all tasks closed
 		},
 	}
 }

@@ -198,22 +198,79 @@ Remove all closed tasks.
 bits prune
 ```
 
-### hook
+### session
 
-Output for Claude Code stop hook integration. This command is designed to be
-called by Claude Code's hook system, not directly by users.
+Session management commands for Claude Code integration. These commands support
+multi-instance scenarios where multiple Claude Code sessions may be running.
+
+#### session claim
+
+Claim primary session ownership for this project. Reads session info from stdin.
 
 ```bash
-bits hook
+echo '{"session_id": "abc", "source": "claude-code"}' | bits session claim
 ```
 
-If an active task exists, outputs JSON that blocks the stop action:
+Output:
 ```json
-{
-  "decision": "block",
-  "reason": "Work on task abc123. Run 'bits show abc123' for details. When complete: bits close abc123 \"reason\".",
-  "systemMessage": "Task abc123: Still active"
-}
+{"claimed": true}
+```
+
+If another session already owns this project:
+```json
+{"claimed": false, "owner": "existing-session-id"}
+```
+
+#### session release
+
+Release session ownership. Only the owner can release.
+
+```bash
+echo '{"session_id": "abc", "source": "claude-code"}' | bits session release
+```
+
+#### session prune
+
+Manually remove a stale session file.
+
+```bash
+bits session prune
+```
+
+#### session hook
+
+Stop hook with session ownership check. Only blocks if:
+1. This session is the owner (session_id matches)
+2. Drain mode is active
+3. Tasks remain (active or open)
+
+```bash
+echo '{"session_id": "abc", "source": "claude-code"}' | bits session hook
+```
+
+### drain
+
+Drain mode commands for working through all tasks before exiting.
+
+#### drain claim
+
+Activate drain mode. Only the session owner can activate.
+
+```bash
+echo '{"session_id": "abc", "source": "claude-code"}' | bits drain claim
+```
+
+Output:
+```json
+{"success": true, "drain_active": true, "message": "Drain mode activated"}
+```
+
+#### drain release
+
+Deactivate drain mode.
+
+```bash
+echo '{"session_id": "abc", "source": "claude-code"}' | bits drain release
 ```
 
 ## Storage Format
@@ -267,18 +324,40 @@ open ──claim──> active ──close──> closed
 
 ## Claude Code Integration
 
-Configure bits as a Claude Code stop hook to prevent stopping with active tasks:
+Configure bits hooks for session management and drain mode:
 
 ```json
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bits session claim"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bits session release"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bits hook"
+            "command": "bits session hook"
           }
         ]
       }
@@ -287,8 +366,28 @@ Configure bits as a Claude Code stop hook to prevent stopping with active tasks:
 }
 ```
 
-When an active task exists, Claude Code will be prompted to complete or release
-it before stopping.
+The stop hook only blocks exit when:
+1. This session is the primary owner
+2. Drain mode is active (`bits drain claim` was called)
+3. Tasks remain to be completed
+
+## Multi-Instance Support
+
+bits supports multiple Claude Code instances working on the same project:
+
+| Scenario | Behavior |
+|----------|----------|
+| First Claude starts | Claims session, becomes primary |
+| Second Claude starts | Sees existing session, does nothing |
+| Primary runs drain mode | Exit blocked until tasks complete |
+| Secondary tries to exit | Always allowed (not primary) |
+| Primary exits normally | Session released, file deleted |
+| Stale session | Use `bits session prune` to clean up |
+
+This enables workflows like:
+- Planning instances that create tasks and exit freely
+- Work instances that drain all tasks before exiting
+- Multiple parallel read-only instances
 
 ## JSON Output
 
