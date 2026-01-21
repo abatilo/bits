@@ -40,8 +40,10 @@ func sessionClaimCmd() *cobra.Command {
 		Run: func(_ *cobra.Command, _ []string) {
 			input, err := session.ReadStdin()
 			if err != nil {
-				// No input or invalid - allow graceful degradation
-				printOutput(formatter.FormatMessage("No session input provided"))
+				// No input or invalid - output JSON for hook compatibility
+				resp := claimResponse{Claimed: false}
+				data, _ := json.Marshal(resp)
+				printOutput(string(data) + "\n")
 				return
 			}
 
@@ -77,8 +79,11 @@ func sessionReleaseCmd() *cobra.Command {
 		Run: func(_ *cobra.Command, _ []string) {
 			input, err := session.ReadStdin()
 			if err != nil {
-				// No input - nothing to release
-				os.Exit(0)
+				// No input - output JSON for hook compatibility
+				resp := releaseResponse{Released: false}
+				data, _ := json.Marshal(resp)
+				printOutput(string(data) + "\n")
+				return
 			}
 
 			store, err := getStore()
