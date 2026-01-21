@@ -173,7 +173,8 @@ func sessionHookCmd() *cobra.Command {
 				return
 			}
 
-			// All tasks complete - allow stop (drain complete)
+			// All tasks complete - deactivate drain mode and allow stop
+			_, _ = session.SetDrainActive(store.BasePath(), sess.SessionID, false)
 			os.Exit(0)
 		},
 	}

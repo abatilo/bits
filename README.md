@@ -254,10 +254,10 @@ Drain mode commands for working through all tasks before exiting.
 
 #### drain claim
 
-Activate drain mode. Only the session owner can activate.
+Activate drain mode. Uses the session owner from the session file.
 
 ```bash
-echo '{"session_id": "abc", "source": "claude-code"}' | bits drain claim
+bits drain claim
 ```
 
 Output:
@@ -265,12 +265,14 @@ Output:
 {"success": true, "drain_active": true, "message": "Drain mode activated"}
 ```
 
+Drain mode is automatically deactivated when the stop hook detects all tasks are complete.
+
 #### drain release
 
-Deactivate drain mode.
+Deactivate drain mode manually.
 
 ```bash
-echo '{"session_id": "abc", "source": "claude-code"}' | bits drain release
+bits drain release
 ```
 
 ## Storage Format
@@ -370,6 +372,8 @@ The stop hook only blocks exit when:
 1. This session is the primary owner
 2. Drain mode is active (`bits drain claim` was called)
 3. Tasks remain to be completed
+
+When all tasks are complete, drain mode is automatically deactivated.
 
 ## Multi-Instance Support
 
