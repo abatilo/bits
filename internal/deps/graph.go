@@ -137,3 +137,16 @@ func taskLess(a, b *task.Task) bool {
 	}
 	return a.CreatedAt.Before(b.CreatedAt)
 }
+
+// SortByReadiness sorts tasks: unblocked first, then blocked.
+// Within each group, sorts by priority then created_at.
+func (g *Graph) SortByReadiness(tasks []*task.Task) {
+	sort.Slice(tasks, func(i, j int) bool {
+		iBlocked := g.IsBlocked(tasks[i].ID)
+		jBlocked := g.IsBlocked(tasks[j].ID)
+		if iBlocked != jBlocked {
+			return !iBlocked // unblocked comes first
+		}
+		return taskLess(tasks[i], tasks[j])
+	})
+}

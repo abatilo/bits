@@ -145,17 +145,31 @@ func listCmd() *cobra.Command {
 				printError(err)
 			}
 
+			// Load all tasks to build complete dependency graph
+			allTasks, err := store.List(storage.StatusFilter{})
+			if err != nil {
+				printError(err)
+			}
+
+			graph := deps.NewGraph(allTasks)
+
+			// Apply status filter
 			filter := storage.StatusFilter{
 				Open:   showOpen,
 				Active: showActive,
 				Closed: showClosed,
 			}
-
-			tasks, err := store.List(filter)
-			if err != nil {
-				printError(err)
+			var filtered []*task.Task
+			for _, t := range allTasks {
+				if filter.Matches(t.Status) {
+					filtered = append(filtered, t)
+				}
 			}
-			printOutput(formatter.FormatTaskList(tasks))
+
+			// Sort: unblocked first, then priority, then created_at
+			graph.SortByReadiness(filtered)
+
+			printOutput(formatter.FormatTaskList(filtered))
 		},
 	}
 	cmd.Flags().BoolVar(&showOpen, "open", false, "Show only open tasks")

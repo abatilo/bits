@@ -167,3 +167,84 @@ func TestValidateAddDep(t *testing.T) {
 		t.Error("Expected error for non-existent task")
 	}
 }
+
+func makeTaskWithPriority(
+	id string,
+	status task.Status,
+	priority task.Priority,
+	createdAt time.Time,
+	deps ...string,
+) *task.Task {
+	return &task.Task{
+		ID:        id,
+		Title:     "Task " + id,
+		Status:    status,
+		Priority:  priority,
+		CreatedAt: createdAt,
+		DependsOn: deps,
+	}
+}
+
+func TestSortByReadiness(t *testing.T) {
+	now := time.Now()
+	tasks := []*task.Task{
+		// Blocked tasks (depend on open task "blocker")
+		makeTaskWithPriority("blocked-high", task.StatusOpen, task.PriorityHigh, now.Add(1*time.Hour), "blocker"),
+		makeTaskWithPriority("blocked-low", task.StatusOpen, task.PriorityLow, now.Add(2*time.Hour), "blocker"),
+		// Unblocked tasks
+		makeTaskWithPriority("unblocked-low", task.StatusOpen, task.PriorityLow, now.Add(3*time.Hour)),
+		makeTaskWithPriority("unblocked-high", task.StatusOpen, task.PriorityHigh, now.Add(4*time.Hour)),
+		// The blocker task (unblocked)
+		makeTaskWithPriority("blocker", task.StatusOpen, task.PriorityMedium, now),
+	}
+
+	g := NewGraph(tasks)
+	g.SortByReadiness(tasks)
+
+	// Expected order: unblocked first (sorted by priority, then created_at), then blocked
+	// Unblocked: unblocked-high (high), blocker (medium), unblocked-low (low)
+	// Blocked: blocked-high (high), blocked-low (low)
+	expectedOrder := []string{"unblocked-high", "blocker", "unblocked-low", "blocked-high", "blocked-low"}
+
+	for i, expected := range expectedOrder {
+		if tasks[i].ID != expected {
+			t.Errorf("Position %d: got %s, want %s", i, tasks[i].ID, expected)
+		}
+	}
+}
+
+func TestSortByReadinessWithClosedDependency(t *testing.T) {
+	now := time.Now()
+	tasks := []*task.Task{
+		makeTaskWithPriority("closed-dep", task.StatusClosed, task.PriorityMedium, now),
+		makeTaskWithPriority(
+			"depends-on-closed",
+			task.StatusOpen,
+			task.PriorityHigh,
+			now.Add(1*time.Hour),
+			"closed-dep",
+		),
+		makeTaskWithPriority("open-blocker", task.StatusOpen, task.PriorityMedium, now.Add(2*time.Hour)),
+		makeTaskWithPriority(
+			"depends-on-open",
+			task.StatusOpen,
+			task.PriorityHigh,
+			now.Add(3*time.Hour),
+			"open-blocker",
+		),
+	}
+
+	g := NewGraph(tasks)
+	g.SortByReadiness(tasks)
+
+	// depends-on-closed is unblocked (closed dep doesn't block)
+	// depends-on-open is blocked (open blocker blocks)
+	// Expected: depends-on-closed (high, unblocked), closed-dep (medium, unblocked), open-blocker (medium, unblocked), depends-on-open (high, blocked)
+	expectedOrder := []string{"depends-on-closed", "closed-dep", "open-blocker", "depends-on-open"}
+
+	for i, expected := range expectedOrder {
+		if tasks[i].ID != expected {
+			t.Errorf("Position %d: got %s, want %s", i, tasks[i].ID, expected)
+		}
+	}
+}
