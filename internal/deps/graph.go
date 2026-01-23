@@ -138,8 +138,38 @@ func taskLess(a, b *task.Task) bool {
 	return a.CreatedAt.Before(b.CreatedAt)
 }
 
+// dependsOn returns true if task 'from' depends on task 'to' (directly or transitively).
+func (g *Graph) dependsOn(from, to string) bool {
+	visited := make(map[string]bool)
+	queue := []string{from}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if visited[current] {
+			continue
+		}
+		visited[current] = true
+
+		t := g.tasks[current]
+		if t == nil {
+			continue
+		}
+
+		for _, depID := range t.DependsOn {
+			if depID == to {
+				return true
+			}
+			queue = append(queue, depID)
+		}
+	}
+	return false
+}
+
 // SortByReadiness sorts tasks: unblocked first, then blocked.
-// Within each group, sorts by priority then created_at.
+// Within blocked group, respects dependency order (blockers before blocked tasks),
+// then sorts by priority, then by created_at.
 func (g *Graph) SortByReadiness(tasks []*task.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
 		iBlocked := g.IsBlocked(tasks[i].ID)
@@ -147,6 +177,16 @@ func (g *Graph) SortByReadiness(tasks []*task.Task) {
 		if iBlocked != jBlocked {
 			return !iBlocked // unblocked comes first
 		}
+
+		// Within blocked group, check dependency relationship
+		if iBlocked && jBlocked {
+			iDependsOnJ := g.dependsOn(tasks[i].ID, tasks[j].ID)
+			jDependsOnI := g.dependsOn(tasks[j].ID, tasks[i].ID)
+			if iDependsOnJ != jDependsOnI {
+				return jDependsOnI // if j depends on i, i comes first
+			}
+		}
+
 		return taskLess(tasks[i], tasks[j])
 	})
 }

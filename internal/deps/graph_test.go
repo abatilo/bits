@@ -248,3 +248,31 @@ func TestSortByReadinessWithClosedDependency(t *testing.T) {
 		}
 	}
 }
+
+func TestSortByReadinessBlockedChain(t *testing.T) {
+	// Reproduces issue: within blocked group, blockers should appear before tasks they block
+	// Scenario: fin blocked by e94, e94 blocked by bza, bza blocked by root
+	// All are blocked, but should appear in dependency order: root, bza, e94, fin
+	now := time.Now()
+	tasks := []*task.Task{
+		// Create tasks in wrong order (fin created first, so would sort first by creation time)
+		makeTaskWithPriority("fin", task.StatusOpen, task.PriorityMedium, now.Add(1*time.Hour), "e94"),
+		makeTaskWithPriority("e94", task.StatusOpen, task.PriorityMedium, now.Add(2*time.Hour), "bza"),
+		makeTaskWithPriority("bza", task.StatusOpen, task.PriorityMedium, now.Add(3*time.Hour), "root"),
+		makeTaskWithPriority("root", task.StatusOpen, task.PriorityMedium, now.Add(4*time.Hour)),
+	}
+
+	g := NewGraph(tasks)
+	g.SortByReadiness(tasks)
+
+	// root is unblocked, others are blocked
+	// Within blocked: bza blocks e94 blocks fin, so order should be bza, e94, fin
+	// Expected: root (unblocked), bza, e94, fin (blocked in dependency order)
+	expectedOrder := []string{"root", "bza", "e94", "fin"}
+
+	for i, expected := range expectedOrder {
+		if tasks[i].ID != expected {
+			t.Errorf("Position %d: got %s, want %s", i, tasks[i].ID, expected)
+		}
+	}
+}
