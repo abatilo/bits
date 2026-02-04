@@ -1,0 +1,13 @@
+{
+  "name": "bits-plugins",
+  "owner": {
+    "name": "abatilo"
+  },
+  "plugins": [
+    {
+      "name": "bits",
+      "source": "./plugins/bits",
+      "description": "Skills, commands, and hooks for bits task tracking with Claude Code"
+    }
+  ]
+}

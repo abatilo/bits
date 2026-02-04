@@ -326,7 +326,47 @@ open ──claim──> active ──close──> closed
 
 ## Claude Code Integration
 
-Configure bits hooks for session management and drain mode:
+### Plugin Installation
+
+bits includes a Claude Code plugin with skills, commands, and hooks for seamless integration.
+
+**1. Add the bits marketplace to your `claude_settings.json`:**
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "bits-plugins": {
+      "source": {
+        "type": "path",
+        "path": "/path/to/bits"
+      }
+    }
+  }
+}
+```
+
+**2. Enable the plugin:**
+
+```json
+{
+  "enabledPlugins": {
+    "bits@bits-plugins": true
+  }
+}
+```
+
+### What the Plugin Provides
+
+| Component | Name | Description |
+|-----------|------|-------------|
+| Skill | `bits` | Task tracking - create, claim, release, close tasks |
+| Skill | `bits-plan` | Extract tasks from conversations using Codex MCP |
+| Command | `/bits-drain` | Work through all ready tasks before exiting |
+| Hooks | Session lifecycle | Automatic session claim/release and drain mode blocking |
+
+### Manual Hook Configuration
+
+If you prefer to configure hooks manually without the plugin:
 
 ```json
 {
