@@ -1,5 +1,10 @@
 ---
+name: bits-drain
 description: Start working on the next ready task
+allowed-tools:
+  - Bash(bits:*)
+  - Bash(jq:*)
+  - Read
 ---
 
 # Bits-Drain

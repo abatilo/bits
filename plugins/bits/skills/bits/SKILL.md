@@ -1,6 +1,7 @@
 ---
 name: bits
 description: Track and manage work items, tasks, issues, and todos with dependencies using bits. Use when user needs to create tasks, track progress, manage blockers, find ready work, claim/release tasks, close completed work, or organize multi-step projects. Triggers on "bits", "task", "issue", "backlog", "blockers", "dependencies", "what's ready", "track this", "add to my list", "what should I work on".
+user-invocable: false
 argument-hint: "[command or task description]"
 allowed-tools:
   - Bash(bits:*)
