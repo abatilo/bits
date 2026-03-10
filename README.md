@@ -244,8 +244,21 @@ Stop hook with session ownership check. Only blocks if:
 2. Drain mode is active
 3. Tasks remain (active or open)
 
+If drain mode has been active for more than 12 hours, the hook force-releases
+drain and allows exit with a timeout message.
+
 ```bash
 echo '{"session_id": "abc", "source": "claude-code"}' | bits session hook
+```
+
+#### session compact
+
+Output drain context after compaction (used by the SessionStart compact hook).
+Reads session state from disk — no stdin required. Prints nothing if drain mode
+is not active, so no context is injected after compaction in normal sessions.
+
+```bash
+bits session compact
 ```
 
 ### drain
@@ -269,11 +282,16 @@ Drain mode is automatically deactivated when the stop hook detects all tasks are
 
 #### drain release
 
-Deactivate drain mode manually.
+Deactivate drain mode. Fails if active or open tasks remain unless `--force` is
+used.
 
 ```bash
-bits drain release
+bits drain release          # Fails if tasks remain
+bits drain release --force  # Suspends drain even with remaining tasks
 ```
+
+Use `--force` when creating a Replan task or when autonomous execution needs to
+stop for other reasons (escalation, ambiguous requirements).
 
 ## Storage Format
 
@@ -360,8 +378,8 @@ bits includes a Claude Code plugin with skills, commands, and hooks for seamless
 | Component | Name | Description |
 |-----------|------|-------------|
 | Skill | `bits` | Task tracking - create, claim, release, close tasks |
-| Skill | `bits-plan` | Extract tasks from conversations using Codex MCP |
-| Command | `/bits-drain` | Work through all ready tasks before exiting |
+| Skill | `bits-plan` | Plan with goal contracts and Codex debate |
+| Command | `/bits-drain` | Autonomous loop: claim, implement, validate, repeat |
 | Hooks | Session lifecycle | Automatic session claim/release and drain mode blocking |
 
 ### Manual Hook Configuration
@@ -378,6 +396,15 @@ If you prefer to configure hooks manually without the plugin:
           {
             "type": "command",
             "command": "bits session claim"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bits session compact"
           }
         ]
       }
@@ -412,8 +439,10 @@ The stop hook only blocks exit when:
 1. This session is the primary owner
 2. Drain mode is active (`bits drain claim` was called)
 3. Tasks remain to be completed
+4. Drain has not exceeded the 12-hour timeout
 
-When all tasks are complete, drain mode is automatically deactivated.
+When all tasks are complete, drain mode is automatically deactivated. The
+compact hook re-injects drain session context after context window compaction.
 
 ## Multi-Instance Support
 
