@@ -4,7 +4,9 @@ package session
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestSessionSaveLoad(t *testing.T) {
@@ -284,6 +286,131 @@ func TestExists(t *testing.T) {
 	// Should exist now
 	if !Exists(tmpDir) {
 		t.Error("Session should exist after creation")
+	}
+}
+
+func TestDrainTimedOut(t *testing.T) {
+	tests := []struct {
+		name           string
+		drainActive    bool
+		drainStartedAt *time.Time
+		want           bool
+	}{
+		{
+			name:        "drain not active",
+			drainActive: false,
+			want:        false,
+		},
+		{
+			name:           "drain active nil start time",
+			drainActive:    true,
+			drainStartedAt: nil,
+			want:           false,
+		},
+		{
+			name:           "drain active started 1 hour ago",
+			drainActive:    true,
+			drainStartedAt: timePtr(time.Now().Add(-1 * time.Hour)),
+			want:           false,
+		},
+		{
+			name:           "drain active started 13 hours ago",
+			drainActive:    true,
+			drainStartedAt: timePtr(time.Now().Add(-13 * time.Hour)),
+			want:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DrainTimedOut(tt.drainActive, tt.drainStartedAt)
+			if got != tt.want {
+				t.Errorf("DrainTimedOut() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDrainTimeoutMessage(t *testing.T) {
+	started := time.Now().Add(-13 * time.Hour)
+	msg := DrainTimeoutMessage(&started)
+	if !strings.Contains(msg, "12-hour maximum") {
+		t.Errorf("DrainTimeoutMessage() = %q, want to contain '12-hour maximum'", msg)
+	}
+	if !strings.Contains(msg, "summary report") {
+		t.Errorf("DrainTimeoutMessage() = %q, want to contain 'summary report'", msg)
+	}
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
+}
+
+func TestCompactContext(t *testing.T) {
+	tests := []struct {
+		name        string
+		drainActive bool
+		active      *ActiveTask
+		openCount   int
+		wantEmpty   bool
+		wantContain string
+	}{
+		{
+			name:        "drain not active returns empty",
+			drainActive: false,
+			active:      nil,
+			openCount:   0,
+			wantEmpty:   true,
+		},
+		{
+			name:        "drain active with active task",
+			drainActive: true,
+			active:      &ActiveTask{ID: "abc", Title: "Fix bug"},
+			openCount:   3,
+			wantContain: "Task abc (Fix bug) is currently active",
+		},
+		{
+			name:        "drain active with active task shows open count",
+			drainActive: true,
+			active:      &ActiveTask{ID: "xyz", Title: "Add feature"},
+			openCount:   0,
+			wantContain: "0 open tasks remaining",
+		},
+		{
+			name:        "drain active with open tasks but none active",
+			drainActive: true,
+			active:      nil,
+			openCount:   5,
+			wantContain: "5 open tasks remaining",
+		},
+		{
+			name:        "drain active no tasks left",
+			drainActive: true,
+			active:      nil,
+			openCount:   0,
+			wantContain: "all tasks are complete",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CompactContext(tt.drainActive, tt.active, tt.openCount)
+
+			if tt.wantEmpty {
+				if got != "" {
+					t.Errorf("CompactContext() = %q, want empty", got)
+				}
+				return
+			}
+
+			if got == "" {
+				t.Fatal("CompactContext() returned empty, want non-empty")
+			}
+
+			if !strings.Contains(got, tt.wantContain) {
+				t.Errorf("CompactContext() = %q, want to contain %q", got, tt.wantContain)
+			}
+		})
 	}
 }
 
