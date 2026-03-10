@@ -17,7 +17,7 @@ Review the conversation history above to identify work that needs planning. Extr
 | Simple single-task work | Use bits skill directly |
 | Quick research or exploration | Use Explore agent |
 
-This is a two-phase process: discovery first, then planning with collaborative debate.
+This is a three-phase process: discovery, planning with collaborative debate, then task creation with a mandatory goal contract.
 
 ## Phase 1: Discovery
 
@@ -107,14 +107,73 @@ There's no fixed number of rounds. Keep interviewing until:
 **Synthesize insights:**
 After the interview, integrate Codex's feedback into the final plan. Document what was deferred and why.
 
+### Step 3: Draft the Goal Contract
+
+Before creating any tasks, translate the user's request into a **Goal Contract**: 3-7 observable truths that must ALL be proven true for the work to be considered done.
+
+**If the user's request is ambiguous** and you cannot write concrete, verifiable contract lines, STOP and ask the user for clarification. Do not create a Replan task — ambiguity requires user input.
+
+The goal contract must be:
+- **Observable**: Each line can be verified by running a command, inspecting a file, or testing behavior
+- **Concrete**: No vague qualifiers like "properly handles" or "works correctly" — state what specifically must be true
+- **Complete**: If all lines are true, the original request is satisfied
+
+Example for "add auth to the API":
+1. `POST /login` returns a JWT for valid credentials and 401 for invalid
+2. Protected endpoints return 403 when no token is provided
+3. Protected endpoints succeed with a valid token
+4. Token expiration is enforced (expired tokens return 401)
+5. Tests exist covering login success, login failure, protected access, and token expiration
+6. `mise run lint` and `mise run test` pass
+
 ### Quality Gate
 Before creating tasks, confirm:
+- Goal contract lines are specific and verifiable
 - All discovered edge cases addressed or explicitly deferred with rationale
 - Error paths defined (what happens when X fails?)
 - Testing strategy covers new code
 - Trade-offs documented with reasoning
 
-### Step 3: Create Tasks
+## Phase 3: Create Tasks
+
+### Step 1: Create the Root Verification Task FIRST
+
+This is mandatory. Create it before any implementation tasks so its ID is available for dependency wiring.
+
+```bash
+bits add "Verify goal: <concise goal summary>" -p high -d "<goal contract description>" --json
+```
+
+The description must contain four sections:
+
+```markdown
+# Original Request
+<The user's original request, verbatim or faithfully paraphrased>
+
+# Goal Contract
+Each line must be proven true to close this task:
+1. <observable truth 1>
+2. <observable truth 2>
+...
+
+# Allowed Evidence
+For each contract line, the verifier must cite one of:
+- A closed child verification task that proves the line
+- Command output demonstrating the behavior
+- Specific file content or test results
+
+Vibe-checking is not evidence. Each line needs explicit proof.
+
+# Failure Handling
+- If a contract line is false: create a new blocker bit, add it as a dependency, release this task
+- If a contract line is ambiguous: create a Replan task and stop drain
+- Track rounds via [goal:<this_task_id>][round:N] prefix on spawned blockers
+- Escalate after 3 failed rounds without progress
+```
+
+Note the returned task ID — this is the **root verifier ID** used throughout.
+
+### Step 2: Create Implementation Tasks
 
 Create bits tasks using the bits skill. **Tasks must be self-contained** with sufficient context for immediate implementation without repeating discovery work. Be verbose and repeat context; prioritize completeness over brevity.
 
@@ -153,54 +212,64 @@ Files to **delete**:
 - `path/to/obsolete/file.ts` - reason for removal
 
 # Acceptance Criteria
-Create a verification bit for each criterion (bits are immutable—no checkboxes):
-- "Verify: [criterion 1]"
-- "Verify: [criterion 2]"
+Concrete criteria that must be true when this task is done:
+- Criterion 1
+- Criterion 2
 
-# Verification
-Create a verification bit for each command:
-- "Verify: `[lint command]` passes"
-- "Verify: `[test command]` passes"
-- "Verify: `[e2e test command]` passes"
-- "Verify: `[integration test command]` passes"
+# Verification Commands
+Commands to run after implementation:
+- `[lint command]`
+- `[test command]`
 ```
 
 **Section inclusion rules:**
 - Always include: Context, References, File Changes, Acceptance Criteria
 - Include Code Snippets only if discovery surfaced code to replicate or templates to follow
-- Include Verification only if the project has test or lint commands
+- Include Verification Commands only if the project has test or lint commands
 - Include Files to delete only if the task involves deletion or refactoring
 - Replace all bracketed examples with concrete values
 
 #### Task Requirements
 1. Scope each task to complete in one focused session
 2. Use specific language; avoid vague descriptions or qualifiers
-3. When implementation reveals new tasks or scope changes, create separate bits tasks for each discovery instead of expanding this task. Add a note linking them: "Discovered: [task IDs]"
+3. When implementation reveals new tasks or scope changes, create separate bits tasks for each discovery instead of expanding this task
 
-### Step 4: Final Verification Task (if applicable)
+### Step 3: Create Verification Tasks
 
-If a full E2E/integration test command was discovered, create a final verification task:
+For each verification command discovered in Phase 1, and for groups of related acceptance criteria, create verification tasks:
 
-1. **Create the task**:
-   - Title: "Run full E2E/integration test suite"
-   - Description: Verify all changes work together by running the complete test suite
-   - Include the discovered **full E2E** command from Phase 1
-   - Acceptance criteria: All tests pass, no regressions introduced. If any tests fail, create new tasks for each failure before closing this verification task.
+```bash
+bits add "Verify: <what is being verified>" -d "<description with exact commands to run>" --json
+```
 
-2. **Set up dependencies**:
-   Create the verification task first, then add dependencies to each blocker:
-   ```bash
-   bits add "Run full E2E test suite"
-   # Note the returned task ID (e.g., bits-xxx)
-   bits dep bits-xxx <task-1-id>
-   bits dep bits-xxx <task-2-id>
-   bits dep bits-xxx <task-3-id>
-   ```
-   This ensures the final verification runs only after all implementation work is complete.
+These act as intermediate verification between implementation and the root verifier.
+
+### Step 4: Wire Dependencies
+
+The dependency structure should be layered:
+
+```
+Implementation tasks → Verification tasks → Root verifier
+```
+
+1. Verification tasks depend on the implementation tasks they validate
+2. The root verifier depends on ALL verification tasks
+3. If a full E2E/integration test exists, create a verification task for it — it's one more blocker of the root verifier, not the root verifier itself
+
+```bash
+# Verification tasks depend on implementation
+bits dep <verify_task_id> <impl_task_1_id>
+bits dep <verify_task_id> <impl_task_2_id>
+
+# Root verifier depends on verification tasks
+bits dep <root_verifier_id> <verify_task_1_id>
+bits dep <root_verifier_id> <verify_task_2_id>
+bits dep <root_verifier_id> <e2e_verify_task_id>
+```
 
 ### Step 5: CLAUDE.md Update Task
 
-After all implementation tasks, create a documentation maintenance task:
+Create a documentation maintenance task that depends on the root verifier:
 
 1. **Create the task**:
    - Title: "Update CLAUDE.md documentation"
@@ -211,11 +280,9 @@ After all implementation tasks, create a documentation maintenance task:
      Delete redundant or low-signal sections. Use the Explore subagent for thorough discovery. Use /commit for atomic commits.
 
 2. **Set up dependencies**:
-   This task should depend on the final verification task (if created) or all implementation tasks:
    ```bash
    bits add "Update CLAUDE.md documentation"
-   # Note the returned task ID
-   bits dep <claude-md-task-id> <verification-task-id>
+   bits dep <claude_md_task_id> <root_verifier_id>
    ```
 
 ## Handling Failures

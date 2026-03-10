@@ -74,27 +74,33 @@ Tasks with unresolved dependencies won't appear in `bits ready`.
 | `bits session release` | Release session (reads stdin) |
 | `bits session prune` | Manual cleanup of stale sessions |
 | `bits session hook` | Stop hook with session ownership check |
+| `bits session compact` | Output drain context after compaction (for hooks) |
 
 ## Drain Commands
 
 | Command | Purpose |
 |---------|---------|
-| `bits drain claim` | Activate drain mode (reads stdin) |
-| `bits drain release` | Deactivate drain mode (reads stdin) |
+| `bits drain claim` | Activate drain mode |
+| `bits drain release` | Deactivate drain mode (fails if tasks remain) |
+| `bits drain release --force` | Suspend drain mode (for replan/escalation) |
 
 ## Task Description Format
 
 ```markdown
-# Description
-What and why.
+# Context
+What this task solves and why.
 
 # Acceptance Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
+Concrete conditions that must be true when done:
+- Criterion 1
+- Criterion 2
 
-# Session Notes
-[Date] COMPLETED: X | IN PROGRESS: Y | NEXT: Z
+# Verification Commands
+- `mise run lint`
+- `mise run test`
 ```
+
+Do not use checkboxes in descriptions — bits are immutable so checkboxes cannot be checked off. State criteria as plain text.
 
 ## Do NOT Close If
 
@@ -102,4 +108,4 @@ What and why.
 - Implementation partial
 - Unresolved errors
 
-Instead: Add "BLOCKED: ..." to Session Notes.
+Instead: Create new blocker bits and add them as dependencies.
