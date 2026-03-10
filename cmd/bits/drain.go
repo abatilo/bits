@@ -74,7 +74,8 @@ func drainClaimCmd() *cobra.Command {
 
 // drainReleaseCmd implements 'bits drain release'.
 func drainReleaseCmd() *cobra.Command {
-	return &cobra.Command{
+	var force bool
+	cmd := &cobra.Command{
 		Use:   "release",
 		Short: "Deactivate drain mode",
 		Run: func(_ *cobra.Command, _ []string) {
@@ -96,19 +97,20 @@ func drainReleaseCmd() *cobra.Command {
 				return
 			}
 
-			// Check for remaining tasks before allowing release
-			activeTasks, err := store.List(storage.StatusFilter{Active: true})
-			if err != nil {
-				printError(err)
-			}
-			openTasks, err := store.List(storage.StatusFilter{Open: true})
-			if err != nil {
-				printError(err)
-			}
+			// Check for remaining tasks before allowing release (unless forced)
+			if !force {
+				activeTasks, listErr := store.List(storage.StatusFilter{Active: true})
+				if listErr != nil {
+					printError(listErr)
+				}
+				openTasks, listErr := store.List(storage.StatusFilter{Open: true})
+				if listErr != nil {
+					printError(listErr)
+				}
 
-			if len(activeTasks) > 0 || len(openTasks) > 0 {
-				msg := fmt.Sprintf(
-					`Claude, you attempted to release drain mode but there are still %d active and %d open tasks remaining.
+				if len(activeTasks) > 0 || len(openTasks) > 0 {
+					msg := fmt.Sprintf(
+						`Claude, you attempted to release drain mode but there are still %d active and %d open tasks remaining.
 
 It looks like you may have forgotten about pending work or misunderstood when drain mode should end.
 
@@ -117,19 +119,21 @@ Please:
 2. Run 'bits ready' to see what tasks are available
 3. Continue working until all tasks are complete
 
-Drain mode should only be released when ALL tasks are finished, not when you want to pause or ask the user a question.`,
-					len(activeTasks),
-					len(openTasks),
-				)
+Drain mode should only be released when ALL tasks are finished, not when you want to pause or ask the user a question.
+Use --force only when creating a Replan task or when user input is required.`,
+						len(activeTasks),
+						len(openTasks),
+					)
 
-				resp := drainResponse{
-					Success:     false,
-					DrainActive: true,
-					Message:     msg,
+					resp := drainResponse{
+						Success:     false,
+						DrainActive: true,
+						Message:     msg,
+					}
+					data, _ := json.Marshal(resp)
+					printOutput(string(data) + "\n")
+					os.Exit(1)
 				}
-				data, _ := json.Marshal(resp)
-				printOutput(string(data) + "\n")
-				os.Exit(1)
 			}
 
 			// Use session's own ID - no external verification needed
@@ -147,4 +151,6 @@ Drain mode should only be released when ALL tasks are finished, not when you wan
 			printOutput(string(data) + "\n")
 		},
 	}
+	cmd.Flags().BoolVar(&force, "force", false, "Release drain mode even with remaining tasks (for replan/suspension)")
+	return cmd
 }
