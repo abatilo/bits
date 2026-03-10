@@ -22,6 +22,7 @@ func sessionCmd() *cobra.Command {
 		sessionReleaseCmd(),
 		sessionPruneCmd(),
 		sessionHookCmd(),
+		sessionCompactCmd(),
 	)
 
 	return cmd
@@ -120,6 +121,50 @@ func sessionPruneCmd() *cobra.Command {
 	}
 }
 
+// sessionCompactCmd implements 'bits session compact' for post-compaction context injection.
+func sessionCompactCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "compact",
+		Short: "Output drain context after compaction (for SessionStart compact hook)",
+		Run: func(_ *cobra.Command, _ []string) {
+			store, err := getStore()
+			if err != nil {
+				return
+			}
+
+			if !session.Exists(store.BasePath()) {
+				return
+			}
+
+			sess, err := session.Load(store.BasePath())
+			if err != nil {
+				return
+			}
+
+			// Check drain timeout (12h max)
+			if session.DrainTimedOut(sess.DrainActive, sess.DrainStartedAt) {
+				msg := session.DrainTimeoutMessage(sess.DrainStartedAt)
+				_, _ = session.SetDrainActive(store.BasePath(), sess.SessionID, false)
+				printOutput(msg)
+				return
+			}
+
+			var active *session.ActiveTask
+			activeTasks, _ := store.List(storage.StatusFilter{Active: true})
+			if len(activeTasks) > 0 {
+				active = &session.ActiveTask{ID: activeTasks[0].ID, Title: activeTasks[0].Title}
+			}
+
+			openTasks, _ := store.List(storage.StatusFilter{Open: true})
+
+			msg := session.CompactContext(sess.DrainActive, active, len(openTasks))
+			if msg != "" {
+				printOutput(msg)
+			}
+		},
+	}
+}
+
 // sessionHookCmd implements 'bits session hook' for stop hook integration.
 func sessionHookCmd() *cobra.Command {
 	return &cobra.Command{
@@ -156,6 +201,14 @@ func sessionHookCmd() *cobra.Command {
 			// Check if drain mode is active
 			if !sess.DrainActive {
 				os.Exit(0) // Not draining - allow stop
+			}
+
+			// Check drain timeout (12h max)
+			if session.DrainTimedOut(sess.DrainActive, sess.DrainStartedAt) {
+				msg := session.DrainTimeoutMessage(sess.DrainStartedAt)
+				_, _ = session.SetDrainActive(store.BasePath(), sess.SessionID, false)
+				_, _ = os.Stdout.WriteString(formatTimeoutAllow(msg) + "\n")
+				os.Exit(0)
 			}
 
 			// Drain mode is active for primary session - check for remaining tasks

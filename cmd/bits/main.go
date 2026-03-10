@@ -516,6 +516,16 @@ func formatActiveBlock(t *task.Task) string {
 	return string(b)
 }
 
+func formatTimeoutAllow(msg string) string {
+	resp := hookResponse{
+		Decision:      "allow",
+		Reason:        msg,
+		SystemMessage: "Drain session timed out after 12 hours",
+	}
+	b, _ := json.Marshal(resp)
+	return string(b)
+}
+
 func formatOpenBlock(count int) string {
 	resp := hookResponse{
 		Decision: "block",

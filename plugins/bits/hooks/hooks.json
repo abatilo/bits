@@ -9,6 +9,15 @@
             "command": "bits session claim"
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bits session compact"
+          }
+        ]
       }
     ],
     "SessionEnd": [
