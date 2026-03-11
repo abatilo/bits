@@ -373,6 +373,78 @@ func TestFindProjectRoot(t *testing.T) {
 		}
 	})
 
+	t.Run("finds .git file in current directory (worktree)", func(t *testing.T) {
+		// In a worktree, .git is a file (not a directory) containing a gitdir pointer
+		worktreeDir := filepath.Join(tmpDir, "worktree-current")
+		if err := os.Mkdir(worktreeDir, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+		defer os.RemoveAll(worktreeDir)
+
+		gitFile := filepath.Join(worktreeDir, ".git")
+		gitFileContent := []byte("gitdir: /fake/repo/.git/worktrees/feature\n")
+		if err := os.WriteFile( //nolint:govet // Intentional shadow in subtest
+			gitFile,
+			gitFileContent,
+			0o644,
+		); err != nil {
+			t.Fatalf("Failed to create .git file: %v", err)
+		}
+
+		t.Chdir(worktreeDir)
+
+		root, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
+		if err != nil {
+			t.Fatalf("FindProjectRoot() error = %v", err)
+		}
+		if root != worktreeDir {
+			t.Errorf("FindProjectRoot() = %q, want %q", root, worktreeDir)
+		}
+	})
+
+	t.Run("finds .git file in parent directory (worktree)", func(t *testing.T) {
+		// Worktree .git file in parent, cwd is a subdirectory
+		worktreeParent := filepath.Join(tmpDir, "worktree-parent")
+		worktreeChild := filepath.Join(worktreeParent, "subdir")
+		if err := os.MkdirAll(worktreeChild, 0o755); err != nil { //nolint:govet // Intentional shadow in subtest
+			t.Fatalf("Failed to create directories: %v", err)
+		}
+		defer os.RemoveAll(worktreeParent)
+
+		gitFile := filepath.Join(worktreeParent, ".git")
+		gitFileContent := []byte("gitdir: /fake/repo/.git/worktrees/feature\n")
+		if err := os.WriteFile( //nolint:govet // Intentional shadow in subtest
+			gitFile,
+			gitFileContent,
+			0o644,
+		); err != nil {
+			t.Fatalf("Failed to create .git file: %v", err)
+		}
+
+		t.Chdir(worktreeChild)
+
+		root, err := FindProjectRoot() //nolint:govet // Intentional shadow in subtest
+		if err != nil {
+			t.Fatalf("FindProjectRoot() error = %v", err)
+		}
+		if root != worktreeParent {
+			t.Errorf("FindProjectRoot() = %q, want %q", root, worktreeParent)
+		}
+	})
+
+	t.Run("worktree and normal repo produce different store paths", func(t *testing.T) {
+		// A worktree at /tmp/xxx/worktree-a and a repo at /tmp/xxx/repo-b
+		// should produce different sanitized paths for storage isolation
+		pathA := "/home/user/projects/myapp"
+		pathB := "/home/user/worktrees/myapp-feature"
+		sanitizedA := SanitizePath(pathA)
+		sanitizedB := SanitizePath(pathB)
+		if sanitizedA == sanitizedB {
+			t.Errorf("SanitizePath(%q) == SanitizePath(%q) == %q, want different paths for storage isolation",
+				pathA, pathB, sanitizedA)
+		}
+	})
+
 	t.Run("returns error when no .git found", func(t *testing.T) {
 		// Create a directory with no .git anywhere up the tree
 		noGitDir := filepath.Join(tmpDir, "no-git-here")
