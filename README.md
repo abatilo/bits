@@ -12,8 +12,9 @@ losing focus.
   agents focused and prevents half-finished work.
 - **File-based storage**: Tasks are Markdown files with YAML frontmatter. Human
   readable, no database required.
-- **Git repository scoping**: Tasks are scoped to the git repository you're
-  working in. Different projects have different task lists.
+- **Git repository scoping**: Tasks are scoped to the git repository (or
+  worktree) you're working in. Different projects and worktrees have separate
+  task lists.
 - **Dependencies with cycle detection**: Tasks can depend on other tasks. bits
   prevents circular dependencies.
 
@@ -281,6 +282,9 @@ Tasks are stored in `~/.bits/<sanitized-project-path>/`.
 
 For example, if your project is at `/Users/alice/projects/myapp`, tasks are
 stored in `~/.bits/Users-alice-projects-myapp/`.
+
+Git worktrees are fully supported — each worktree gets its own isolated task
+storage, sessions, and drain state, enabling parallel work across worktrees.
 
 Each task is a Markdown file with YAML frontmatter:
 
