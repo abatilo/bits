@@ -22,7 +22,7 @@ func FindProjectRoot() (string, error) {
 		gitPath := filepath.Join(dir, ".git")
 		var info os.FileInfo
 		info, err = os.Stat(gitPath)
-		if err == nil && info.IsDir() {
+		if err == nil && (info.IsDir() || info.Mode().IsRegular()) {
 			// Resolve symlinks to ensure consistent paths
 			dir, err = filepath.EvalSymlinks(dir)
 			if err != nil {
