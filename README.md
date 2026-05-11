@@ -1,5 +1,12 @@
 # bits
 
+> **⚠️ Archived: Migrated to native Claude Code `/goal` + built-in task tracking**
+>
+> Claude Code now ships with `/goal` and a more capable native task tracker that
+> cover the same workflow this project was built for. I've migrated to those
+> and am archiving this repo. The code remains here for reference, but it is
+> no longer maintained.
+
 > **Minimal task tracking for AI agents — one active task, zero distractions**
 
 bits is a file-based task tracker designed for AI coding agents. It enforces a
