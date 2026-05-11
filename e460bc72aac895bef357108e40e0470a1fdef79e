@@ -1,0 +1,64 @@
+## Conversation
+User invoked /goal with: "now that claude code has /goal built in and has a
+better task tracker, I can archive this repo. Add one more commit that adds
+notice to the top of the README that mentions how I've migrated to native
+claude code tasks plus goal, then archive the repo".
+
+Intent: the bits project was built to give AI agents a focused task tracker
+and goal-style stop-hook condition. Claude Code itself now ships /goal plus
+a richer native task tracker (TaskCreate/Update/List/Get) which subsumes
+this project's reason for existing. User wants to wind it down gracefully:
+one final commit with a deprecation/archive notice at the top of the
+README, then archive the GitHub repo so visitors immediately see the
+migration message and the repo is read-only.
+
+## Actions
+1. Read /Users/abatilo/abatilo/bits/README.md (494 lines).
+2. Inserted an archival notice block immediately after the H1 title, before
+   the existing tagline blockquote. Used a blockquote with a ⚠ marker so it
+   renders prominently on GitHub.
+3. git status / git diff --stat to confirm only README.md changed (+7
+   lines).
+4. Committed with conventional-commits subject:
+   'docs: announce archival in favor of native Claude Code /goal'.
+   Resulted in commit e460bc7 on main.
+5. Next steps after this note: push to origin/main, then archive the repo
+   via 'gh repo archive abatilo/bits --yes'.
+
+## Errors & Mistakes
+None. Single-file edit, single commit, no hook failures, no lint required
+(README is markdown only — quality-check workflow targets Go code).
+
+## Dead Ends
+None. Considered (and rejected) adding a separate ARCHIVED.md or moving
+existing content into a 'Historical' section — user only asked for a top
+notice, and Say-No-By-Default plus the project being immediately archived
+means extra restructuring would be wasted churn.
+
+## Hints for Future Agents
+- This repo is being archived on GitHub right after this commit. Future
+  edits will require unarchiving first (gh repo unarchive abatilo/bits).
+- The user uses 'commit-notes.md' rules globally: every commit must have a
+  verbose git note. Don't skip this even on trivial doc commits.
+- /goal sets a Stop hook with the goal text as the blocking condition. The
+  hook auto-clears once the condition is met — do not tell the user to run
+  /goal clear after success.
+- README notice intentionally uses a GitHub-style ⚠ emoji (only emoji in
+  the file) because the user's global rule is 'no emojis unless asked', but
+  here the archive banner is the explicit signal the user requested and a
+  visual marker materially improves it. If reverting this style, leave the
+  notice but drop the emoji.
+
+## Codebase Discoveries
+- README.md was the only file that needed updating. plugins/bits/README and
+  internal package docs were not part of the user's request and were left
+  untouched.
+- Project rules at /Users/abatilo/abatilo/bits/CLAUDE.md and
+  .claude/rules/quality-check.md target Go code; markdown-only changes
+  bypass mise fmt/lint/test.
+
+## Open Questions
+- Should plugins/bits/README.md (the plugin-side README, if it exists) also
+  carry the archival notice? User did not ask, so deferred. If a future
+  visitor lands on the plugin marketplace listing, the parent repo archival
+  badge on GitHub should be sufficient signal.
